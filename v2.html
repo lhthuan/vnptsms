@@ -619,15 +619,15 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
         </div>
       </div>
 
-      <!-- Tìm sản phẩm theo SKU -->
+      <!-- Tìm sản phẩm thông minh -->
       <div class="section">
         <div class="sec-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Tìm sản phẩm theo SKU
+          Tìm sản phẩm thông minh
         </div>
         <div class="sku-box">
           <div style="position:relative;flex:1">
-            <input type="text" id="skuInput" placeholder="Nhập mã SKU hoặc tên sản phẩm..." style="width:100%"
+            <input type="text" id="skuInput" placeholder="SKU, tên, hoạt chất, barcode, NSX, số đăng ký..." style="width:100%"
               onkeydown="if(event.key==='Enter'){hideSkuDrop();searchSKU()}"
               oninput="onSkuInput()"
               onblur="setTimeout(hideSkuDrop,200)">
@@ -1437,41 +1437,72 @@ function handleInvFile(file) {
 }
 
 const INV_COL_MAP = {
-  sku:   ['mã hh','ma hh','sku','mã hàng','mã sp','barcode','mã','code','ma hang','ma sp','item code','product code'],
-  name:  ['tên hh','ten hh','tên','tên hàng','tên sản phẩm','tên sp','name','ten hang','ten san pham','product name'],
-  price: ['giá bán','gia ban','giá','đơn giá','price','don gia','gia','retail price','sell price'],
-  unit:  ['đvt bán','dvt ban','đvt','đơn vị','đơn vị tính','unit','dvt','don vi','uom'],
-  stock: ['tồn kho','ton kho','tồn','sl tồn','stock','ton','sl ton','quantity','số lượng','sl']
+  sku:              ['mã hh','ma hh','sku','mã hàng','mã sp','ma hang','ma sp','item code','product code'],
+  barcode:          ['barcode','mã vạch','ma vach','bar code','ean','upc'],
+  name:             ['tên hh','ten hh','tên hàng','tên sản phẩm','tên sp','ten hang','ten san pham','product name'],
+  description:      ['mô tả','mo ta','description','diễn giải'],
+  active_ingredient:['hoạt chất','hoat chat','active ingredient','thành phần','thanh phan'],
+  base_unit:        ['đvt cơ bản','dvt co ban','đơn vị cơ bản','don vi co ban','base unit'],
+  vat:              ['vat','thuế vat','thue vat','% vat'],
+  manufacturer:     ['nsx','nhà sản xuất','nha san xuat','manufacturer','hãng sx','hang sx'],
+  country:          ['nước sx','nuoc sx','nước sản xuất','nuoc san xuat','country','xuất xứ','xuat xu'],
+  category:         ['ngành hàng','nganh hang','category','nhóm hàng','nhom hang'],
+  product_type:     ['loại','loai','type','phân loại hh','phan loai hh'],
+  price:            ['giá bán','gia ban','đơn giá','don gia','retail price','sell price'],
+  buy_price:        ['giá mua','gia mua','buy price','purchase price','cost'],
+  unit:             ['đvt bán','dvt ban','đơn vị bán','don vi ban','unit','uom'],
+  buy_unit:         ['đvt mua','dvt mua','đơn vị mua','don vi mua','purchase unit'],
+  registration_no:  ['số đk','so dk','số đăng ký','so dang ky','registration','reg no','số dk'],
+  importer:         ['nhà nhập khẩu','nha nhap khau','importer','nhà nhập','nha nhap'],
+  brand_name:       ['tên nhãn hàng','ten nhan hang','brand name','nhãn hàng','nhan hang','brand'],
+  brand_code:       ['mã nhãn hàng','ma nhan hang','brand code'],
+  status:           ['trạng thái','trang thai','status','khoá hiển thị','khoa hien thi']
 };
 
 function parseInvRows(raw) {
   if (!raw.length) { toast('File trống hoặc không đọc được', 'error'); return; }
   const headers = Object.keys(raw[0]).map(h => ({ orig: h, lower: h.toLowerCase().trim() }));
   const findCol = (aliases) => headers.find(h => aliases.some(a => h.lower.includes(a)))?.orig || null;
-  const skuCol   = findCol(INV_COL_MAP.sku);
-  const nameCol  = findCol(INV_COL_MAP.name);
-  const priceCol = findCol(INV_COL_MAP.price);
-  const unitCol  = findCol(INV_COL_MAP.unit);
-  const stockCol = findCol(INV_COL_MAP.stock);
 
-  if (!skuCol || !nameCol) {
+  const cols = {};
+  Object.keys(INV_COL_MAP).forEach(k => { cols[k] = findCol(INV_COL_MAP[k]); });
+
+  if (!cols.sku || !cols.name) {
     toast('Không tìm thấy cột SKU hoặc Tên sản phẩm. Kiểm tra header file.', 'error');
     return;
   }
 
+  const str  = (c, row) => c ? String(row[c] || '').trim() : '';
+  const num  = (c, row) => c ? (parseFloat(String(row[c]).replace(/[^0-9.]/g,'')) || 0) : 0;
+
   let skipped = 0;
   pendingInvRows = [];
   raw.forEach(row => {
-    const sku = String(row[skuCol] || '').trim();
-    const name = String(row[nameCol] || '').trim();
+    const sku  = str(cols.sku, row);
+    const name = str(cols.name, row);
     if (!sku || !name) { skipped++; return; }
     pendingInvRows.push({
       sku,
       name,
-      price: priceCol ? (parseFloat(String(row[priceCol]).replace(/[^0-9.]/g,'')) || 0) : 0,
-      unit:  unitCol  ? String(row[unitCol]).trim()  || 'Sp' : 'Sp',
-      stock: stockCol ? (parseInt(String(row[stockCol]).replace(/[^0-9]/g,''))  || 0) : 0,
-      updated_at: new Date().toISOString()
+      barcode:          str(cols.barcode, row),
+      description:      str(cols.description, row),
+      active_ingredient:str(cols.active_ingredient, row),
+      base_unit:        str(cols.base_unit, row),
+      vat:              num(cols.vat, row),
+      manufacturer:     str(cols.manufacturer, row),
+      country:          str(cols.country, row),
+      category:         str(cols.category, row),
+      product_type:     str(cols.product_type, row),
+      price:            num(cols.price, row),
+      buy_price:        num(cols.buy_price, row),
+      unit:             str(cols.unit, row) || 'Sp',
+      buy_unit:         str(cols.buy_unit, row),
+      registration_no:  str(cols.registration_no, row),
+      importer:         str(cols.importer, row),
+      brand_name:       str(cols.brand_name, row),
+      brand_code:       str(cols.brand_code, row),
+      status:           str(cols.status, row),
+      updated_at:       new Date().toISOString()
     });
   });
 
@@ -1482,7 +1513,7 @@ function parseInvRows(raw) {
       <td>${r.name.replace(/</g,'&lt;')}</td>
       <td style="font-family:var(--mono);text-align:right">${fmt(r.price)} ₫</td>
       <td>${r.unit}</td>
-      <td style="font-family:var(--mono);text-align:right">${r.stock}</td>
+      <td style="font-size:11px;color:var(--text-2)">${(r.active_ingredient||'').replace(/</g,'&lt;').slice(0,40)||'—'}</td>
     </tr>`).join('');
   document.getElementById('invPreviewCount').textContent = pendingInvRows.length;
   document.getElementById('invSkipCount').textContent = skipped ? `Bỏ qua ${skipped} dòng thiếu dữ liệu` : '';
@@ -1664,23 +1695,30 @@ function debouncedAddrSuggest() { clearTimeout(_addrSuggestTimer); }
 function onSkuInput() {
   const q = document.getElementById('skuInput').value.trim().toLowerCase();
   if (!q) { hideSkuDrop(); return; }
-  const keys = Object.keys(inventoryCache);
+  const SEARCH_FIELDS = ['sku','barcode','name','description','active_ingredient','manufacturer','brand_name','country','category','registration_no','importer','product_type'];
+  const items = Object.values(inventoryCache);
   const matches = [];
-  for (const k of keys) {
-    const item = inventoryCache[k];
-    if (k.includes(q) || (item.name || '').toLowerCase().includes(q)) {
-      matches.push(item);
-      if (matches.length >= 10) break;
-    }
+  for (const item of items) {
+    const hit = SEARCH_FIELDS.some(f => (item[f] || '').toLowerCase().includes(q));
+    if (hit) { matches.push(item); if (matches.length >= 10) break; }
   }
   if (!matches.length) { hideSkuDrop(); return; }
   const drop = document.getElementById('skuDropdown');
-  drop.innerHTML = matches.map(item => `
-    <div class="sku-drop-item" onmousedown="selectSkuDrop('${item.sku.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
-      <span class="sku-drop-sku">${item.sku}</span>
-      <span class="sku-drop-name">${(item.name||'').replace(/</g,'&lt;')}</span>
+  drop.innerHTML = matches.map(item => {
+    const esc = s => (s||'').replace(/</g,'&lt;');
+    const safeSku = item.sku.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const sub = [item.active_ingredient, item.manufacturer, item.country].filter(Boolean).map(esc).join(' · ');
+    return `<div class="sku-drop-item" onmousedown="selectSkuDrop('${safeSku}')">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:7px">
+          <span class="sku-drop-sku">${esc(item.sku)}</span>
+          <span class="sku-drop-name">${esc(item.name)}</span>
+        </div>
+        ${sub ? `<div style="font-size:10.5px;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px">${sub}</div>` : ''}
+      </div>
       <span class="sku-drop-price">${fmt(item.price||0)}₫</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   drop.style.display = 'block';
 }
 
