@@ -1591,7 +1591,7 @@ async function parseAndFill() {
 
 async function fetchAddressSuggestions(query, apiKey) {
   const key = apiKey || 'public_key';
-  const url = `https://maps.track-asia.com/api/v2/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}&size=5&new_admin=true`;
+  const url = `https://maps.track-asia.com/api/v2/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}&size=5&new_admin=true&include_old_admin=true`;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (r.status === 401 || r.status === 403) return { ok: false, err: 'key_invalid' };
