@@ -1692,14 +1692,31 @@ let _addrSuggestTimer = null;
 function debouncedAddrSuggest() { clearTimeout(_addrSuggestTimer); }
 
 /* ══ SKU COMBO SEARCH ══ */
+function _skuNorm(s) {
+  if (!s) return '';
+  // NFC normalize + lowercase + strip Vietnamese diacritics for accent-insensitive match
+  return s.normalize('NFC').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd');
+}
+const SKU_SEARCH_FIELDS = ['sku','barcode','name','description','active_ingredient','manufacturer','brand_name','country','category','registration_no','importer','product_type'];
+
 function onSkuInput() {
-  const q = document.getElementById('skuInput').value.trim().toLowerCase();
-  if (!q) { hideSkuDrop(); return; }
-  const SEARCH_FIELDS = ['sku','barcode','name','description','active_ingredient','manufacturer','brand_name','country','category','registration_no','importer','product_type'];
+  const raw = document.getElementById('skuInput').value.trim();
+  if (!raw) { hideSkuDrop(); return; }
+  // Split into words so "thuoc bo" matches "Thuốc Bổ Gan"
+  const words = raw.toLowerCase().split(/\s+/).filter(Boolean);
+  const wordsNorm = words.map(_skuNorm);
+
   const items = Object.values(inventoryCache);
   const matches = [];
   for (const item of items) {
-    const hit = SEARCH_FIELDS.some(f => (item[f] || '').toLowerCase().includes(q));
+    // Build one big searchable string from all fields for this item
+    const haystack = SKU_SEARCH_FIELDS.map(f => item[f] || '').join(' ');
+    const haystackNorm = _skuNorm(haystack);
+    const haystackRaw  = haystack.toLowerCase();
+    // All words must appear somewhere (AND logic)
+    const hit = wordsNorm.every((wn, i) => haystackNorm.includes(wn) || haystackRaw.includes(words[i]));
     if (hit) { matches.push(item); if (matches.length >= 10) break; }
   }
   if (!matches.length) { hideSkuDrop(); return; }
