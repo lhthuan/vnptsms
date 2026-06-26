@@ -2212,22 +2212,44 @@ async function importOrders(event){
 
 /* ══ EXPORT IMAGE ══ */
 async function blobToB64(blob){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});}
+
+// Cache base64 results across export calls — second export is instant for same images
+const _imgCache=new Map();
 async function imgToBase64(url){
   if(!url||url.startsWith('data:'))return url;
-  try{const r=await fetch(WORKER(url),{signal:AbortSignal.timeout(8000)});if(!r.ok)throw new Error();const b=await r.blob();if(!b.size)throw new Error();const b64=await blobToB64(b);if(b64&&b64.startsWith('data:image'))return b64;throw new Error();}
-  catch{try{const r=await fetch(url,{signal:AbortSignal.timeout(5000)});if(!r.ok)throw new Error();const b=await r.blob();const b64=await blobToB64(b);if(b64&&b64.startsWith('data:image'))return b64;}catch{}return null;}
+  if(_imgCache.has(url))return _imgCache.get(url);
+  const tryFetch=async(fetchUrl,ms)=>{
+    const r=await fetch(fetchUrl,{signal:AbortSignal.timeout(ms)});
+    if(!r.ok)throw new Error();
+    const b=await r.blob();if(!b.size)throw new Error();
+    const b64=await blobToB64(b);if(!b64?.startsWith('data:image'))throw new Error();
+    return b64;
+  };
+  let result=null;
+  try{ result=await tryFetch(WORKER(url),4000); }
+  catch{ try{ result=await tryFetch(url,3000); }catch{} }
+  _imgCache.set(url,result); // cache success AND failure (null) to skip retry
+  return result;
 }
+
 async function exportImage(mode){
   if(!cart.length){toast('Chưa có sản phẩm trong đơn','error');return;}
-  const overlay=document.getElementById('exportOverlay');const msg=document.getElementById('exportMsg');
+  const overlay=document.getElementById('exportOverlay'),msg=document.getElementById('exportMsg');
   overlay.classList.add('open');msg.textContent='Đang chuyển ảnh...';
-  document.querySelectorAll('.qt-del-btn').forEach(b=>b.style.opacity='0');
+  const delBtns=document.querySelectorAll('.qt-del-btn');
+  delBtns.forEach(b=>b.style.opacity='0');
   const card=document.getElementById('quoteCard');
-  const imgs=Array.from(card.querySelectorAll('img'));const origSrcs=imgs.map(i=>i.src);
+  // Filter out imgs with no real src (empty src defaults to page URL)
+  const pageBase=location.href.split('?')[0];
+  const imgs=Array.from(card.querySelectorAll('img')).filter(img=>img.src&&img.src!==pageBase&&!img.src.endsWith('#'));
+  const origSrcs=imgs.map(i=>i.src);
   try{
-    const b64s=await Promise.all(origSrcs.map(src=>{if(!src)return Promise.resolve(null);if(src.startsWith('data:image'))return Promise.resolve(src);return imgToBase64(src);}));
-    imgs.forEach((img,i)=>{if(b64s[i]&&b64s[i].startsWith('data:image'))img.src=b64s[i];});
-    await new Promise(r=>setTimeout(r,100));
+    // Deduplicate URLs — fetch each unique URL once, others served from cache
+    const uniq=[...new Set(origSrcs.filter(s=>s&&!s.startsWith('data:')))];
+    await Promise.all(uniq.map(imgToBase64));
+    imgs.forEach((img,i)=>{ const b=_imgCache.get(origSrcs[i]); if(b?.startsWith('data:image'))img.src=b; });
+    // Wait for repaint (more accurate than setTimeout 100ms)
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
     msg.textContent=mode==='clipboard'?'Đang tạo ảnh...':'Đang xuất JPG...';
     const canvas=await html2canvas(card,{scale:2,useCORS:false,allowTaint:false,backgroundColor:'#ffffff',logging:false});
     imgs.forEach((img,i)=>img.src=origSrcs[i]);
@@ -2238,12 +2260,12 @@ async function exportImage(mode){
       canvas.toBlob(async blob=>{
         try{await navigator.clipboard.write([new ClipboardItem({'image/png':blob})]);toast('Đã copy ảnh — paste vào chat! ✅','success');}
         catch{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`baogía-${orderId.replace('#','')}.png`;a.click();toast('Clipboard bị chặn — đã tải xuống','info');}
-        document.querySelectorAll('.qt-del-btn').forEach(b=>b.style.opacity='');overlay.classList.remove('open');
+        delBtns.forEach(b=>b.style.opacity='');overlay.classList.remove('open');
       },'image/png');
       return;
     }
   }catch(e){imgs.forEach((img,i)=>img.src=origSrcs[i]);toast('Lỗi xuất ảnh: '+e.message,'error');}
-  finally{document.querySelectorAll('.qt-del-btn').forEach(b=>b.style.opacity='');overlay.classList.remove('open');}
+  finally{delBtns.forEach(b=>b.style.opacity='');overlay.classList.remove('open');}
 }
 
 /* ══ PRINT ══ */
