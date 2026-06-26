@@ -1408,8 +1408,16 @@ let inventoryCache = {};
 async function loadInventory() {
   const sb = getSb();
   if (!sb) return;
-  const { data } = await sb.from('inventory').select('*');
-  if (data) { inventoryCache = {}; data.forEach(r => { inventoryCache[r.sku.toLowerCase()] = r; }); }
+  inventoryCache = {};
+  const PAGE = 1000;
+  let from = 0, done = false;
+  while (!done) {
+    const { data, error } = await sb.from('inventory').select('*').range(from, from + PAGE - 1);
+    if (error || !data) break;
+    data.forEach(r => { inventoryCache[r.sku.toLowerCase()] = r; });
+    done = data.length < PAGE;
+    from += PAGE;
+  }
   document.getElementById('invCacheCount').textContent = Object.keys(inventoryCache).length;
 }
 
