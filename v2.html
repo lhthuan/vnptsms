@@ -1765,14 +1765,6 @@ async function searchSKU() {
   const sku = document.getElementById('skuInput').value.trim();
   if (!sku) { toast('Vui lòng nhập mã SKU', 'error'); return; }
 
-  // Check inventory cache first
-  const cached = inventoryCache[sku.toLowerCase()];
-  if (cached) {
-    showSKUResult({ sku: cached.sku, name: cached.name, price: cached.price, images: [], features: [{ name:'Đơn vị tính', value: cached.unit }] });
-    toast('📦 Từ kho nội bộ: ' + cached.name, 'success');
-    return;
-  }
-
   const btn = document.getElementById('btnSearch');
   btn.innerHTML = `<span class="spinner"></span> Đang tìm...`;
   btn.disabled = true;
