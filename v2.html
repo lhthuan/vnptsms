@@ -407,6 +407,12 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 .upload-area p{font-size:13px;color:var(--text-2);font-weight:600}
 .upload-area span{font-size:11.5px;color:var(--text-3)}
 
+/* Floating copy button */
+.fab-copy{position:fixed;bottom:28px;right:28px;width:52px;height:52px;border-radius:50%;background:var(--green);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(10,110,79,.38);z-index:400;transition:all .17s;flex-shrink:0}
+.fab-copy:hover{background:var(--green-dark);transform:scale(1.1);box-shadow:0 6px 22px rgba(10,110,79,.5)}
+.fab-copy svg{width:22px;height:22px;pointer-events:none}
+@media(max-width:768px){.fab-copy{bottom:80px;right:14px;width:46px;height:46px}}
+
 /* SKU combo search dropdown */
 .sku-drop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid var(--green-mid);border-radius:var(--r-sm);box-shadow:var(--shadow-md);z-index:200;max-height:268px;overflow-y:auto}
 .sku-drop::-webkit-scrollbar{width:4px}.sku-drop::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -1002,6 +1008,11 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
   </div>
 
 </div>
+
+<!-- Floating copy image button -->
+<button class="fab-copy" onclick="exportImage('clipboard')" title="Copy ảnh báo giá">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+</button>
 
 <!-- TOAST -->
 <div class="toast-wrap" id="toastWrap"></div>
@@ -1988,8 +1999,6 @@ function newOrder(){
   document.getElementById('discountVoucher').value=0;
   document.getElementById('shipFee').value=0;
   document.getElementById('carePointPay').value=0;
-  selectedEmployee = '';
-  document.getElementById('empSelect').value = '';
   selectedNotice=0;
   NOTICES.forEach((_,i)=>{ const p=document.getElementById('noticePill'+i); if(p) p.classList.toggle('active',i===0); });
   document.getElementById('skuResult').classList.remove('show');
@@ -2075,18 +2084,18 @@ async function refreshSavedUI() {
   }
   document.getElementById('savedCount').textContent = list.length;
   window._savedOrders = list;
-  _renderSavedList(list, 'savedListSidebar', 5);
+  _renderSavedList(list, 'savedListSidebar', 100);
 }
 
 async function renderSavedModal() {
   const sb = getSb();
   let list = getSaved();
   if (sb) {
-    const { data } = await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(200);
+    const { data } = await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(500);
     if (data) list = data.map(o=>({id:o.id,name:o.name,savedAt:o.saved_at,total:o.total,cart:o.cart,form:o.form,selectedNotice:o.selected_notice,created_by:o.created_by}));
   }
   window._savedOrders = list;
-  _renderSavedList(list, 'savedListModal', 0);
+  _renderSavedList(list, 'savedListModal', 500);
 }
 
 function loadOrder(idx){
@@ -2155,7 +2164,7 @@ async function filterSavedList(q){
   const kw=q.trim().toLowerCase();
   if(!kw){ renderSavedModal(); return; }
   const sb=getSb(); let list=getSaved();
-  if(sb){const{data}=await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(200);if(data)list=data.map(o=>({id:o.id,name:o.name,savedAt:o.saved_at,total:o.total,cart:o.cart,form:o.form,selectedNotice:o.selected_notice,created_by:o.created_by}));}
+  if(sb){const{data}=await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(500);if(data)list=data.map(o=>({id:o.id,name:o.name,savedAt:o.saved_at,total:o.total,cart:o.cart,form:o.form,selectedNotice:o.selected_notice,created_by:o.created_by}));}
   const filtered=list.filter(o=>{const f=o.form||{};const emp=employees.find(e=>e.id===o.created_by);const empN=(emp?.name||'').toLowerCase();return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw)||empN.includes(kw);});
   window._savedOrders=filtered;
   const el=document.getElementById('savedListModal');
