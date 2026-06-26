@@ -1218,7 +1218,9 @@ CREATE POLICY "anon_all" ON inventory FOR ALL TO anon USING (true) WITH CHECK (t
 
 <script>
 /* ══ CONFIG ══ */
-const SUPABASE_URL = 'https://kyimvqljohydxpoosxln.supabase.co';
+const SUPABASE_URL  = 'https://kyimvqljohydxpoosxln.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5aW12cWxqb2h5ZHhwb29zeGxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMTMyMTcsImV4cCI6MjA5Nzg4OTIxN30.9y9DYpr6JltKFy4LRQKWqKqIpeq5IiosvgJT8JaBoWg';
+const TRACKASIA_KEY = '2c1773889324e30bd8727234e2a89e59fe';
 const API_URL = sku => `https://trungson-api.lamhieuthuan.workers.dev/?sku=${encodeURIComponent(sku)}`;
 const WORKER  = url => `https://trungson-api.lamhieuthuan.workers.dev/?imgurl=${encodeURIComponent(url)}`;
 
@@ -1230,8 +1232,9 @@ let _sb = null;
 function getSb() {
   if (_sb) return _sb;
   const { supabaseKey } = getConfig();
-  if (!supabaseKey) return null;
-  try { _sb = window.supabase.createClient(SUPABASE_URL, supabaseKey); return _sb; }
+  const key = supabaseKey || SUPABASE_KEY;
+  if (!key) return null;
+  try { _sb = window.supabase.createClient(SUPABASE_URL, key); return _sb; }
   catch { return null; }
 }
 function resetSb() { _sb = null; }
@@ -1248,8 +1251,8 @@ async function checkConn() {
 /* ══ SETTINGS ══ */
 function openSettingsModal() {
   const cfg = getConfig();
-  document.getElementById('cfgSupabaseKey').value   = cfg.supabaseKey   || '';
-  document.getElementById('cfgTrackasiaKey').value  = cfg.trackasiaKey  || '';
+  document.getElementById('cfgSupabaseKey').value   = cfg.supabaseKey   || SUPABASE_KEY;
+  document.getElementById('cfgTrackasiaKey').value  = cfg.trackasiaKey  || TRACKASIA_KEY;
   document.getElementById('settingsModal').classList.add('open');
 }
 function closeSettingsModal() { document.getElementById('settingsModal').classList.remove('open'); }
@@ -1574,7 +1577,7 @@ async function parseAndFill() {
   const { trackasiaKey } = getConfig();
   if (address) {
     sugEl.innerHTML = '<div class="addr-loading"><span class="spinner" style="border-top-color:var(--green-mid);border-color:rgba(0,0,0,.1)"></span> Đang tìm gợi ý...</div>';
-    const res = await fetchAddressSuggestions(address, trackasiaKey);
+    const res = await fetchAddressSuggestions(address, trackasiaKey || TRACKASIA_KEY);
     if (res.ok && res.list.length) {
       sugEl.innerHTML = res.list.map(s => `<div class="addr-suggestion-item" onclick="useAddr('${encodeURIComponent(s)}')">${s.replace(/</g,'&lt;')}</div>`).join('');
     } else if (!res.ok && res.err === 'key_invalid') {
@@ -1590,7 +1593,7 @@ async function parseAndFill() {
 }
 
 async function fetchAddressSuggestions(query, apiKey) {
-  const key = apiKey || 'public_key';
+  const key = apiKey || TRACKASIA_KEY;
   const url = `https://maps.track-asia.com/api/v2/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}&size=5&new_admin=true&include_old_admin=true`;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
