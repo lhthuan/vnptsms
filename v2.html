@@ -1506,24 +1506,56 @@ function toggleAddrParser() {
 }
 
 function parseCustomerInfo(text) {
-  const phoneRegex = /(\+84|0)(3[2-9]|5[25689]|7[06789]|8[0-9]|9[0-9])\d{7}/g;
-  const phones = [...text.matchAll(phoneRegex)];
-  const phone = phones[0] ? phones[0][0] : '';
-  let remaining = text.replace(phoneRegex, '').replace(/\s{2,}/g,' ').trim();
-  remaining = remaining.replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g,'').trim();
-  const addrPattern = /(\d+[\/\-]\d+|\bsố\s+\d|\bđường\b|\bphố\b|\bphường\b|\bxã\b|\bquận\b|\bhuyện\b|\btỉnh\b|\bthành phố\b|\btp\.\b|\btp\s|\bngõ\b|\bngách\b|\bthôn\b|\bxóm\b|\bấp\b|\bthị trấn\b|\bthị xã\b)/i;
-  const addrMatch = addrPattern.exec(remaining);
-  let name = '', address = '';
-  if (addrMatch && addrMatch.index > 0) {
-    name = remaining.substring(0, addrMatch.index).replace(/[\-–—,;|\s]+$/,'').trim();
-    address = remaining.substring(addrMatch.index).trim();
-  } else if (addrMatch && addrMatch.index === 0) {
-    address = remaining;
+  // Phone: try strict 10-digit Vietnamese mobile first, then 9-digit fallback
+  const strictRx = /(\+84|0)(3[2-9]|5[25689]|7[06789]|8[0-9]|9[0-9])\d{7}/g;
+  const looseRx  = /\b0\d{8,9}\b/g;
+  let phone = '';
+  const strictHits = [...text.matchAll(strictRx)];
+  if (strictHits.length) {
+    phone = strictHits[0][0];
   } else {
-    const parts = remaining.split(/\s*[\-–—,;|]\s*/).filter(p => p.trim());
-    if (parts.length >= 2) { name = parts[0].trim(); address = parts.slice(1).join(', ').trim(); }
-    else name = remaining;
+    const looseHits = [...text.matchAll(looseRx)];
+    if (looseHits.length) phone = looseHits[0][0];
   }
+
+  // Remove phone then clean whitespace
+  let cleaned = phone ? text.replace(phone, ' ') : text;
+
+  // Multi-line input: split by newlines — first line = name chunk, rest = address
+  const lines = cleaned.split(/\n+/).map(l => l.trim().replace(/\s{2,}/g, ' ')).filter(Boolean);
+  let name = '', address = '';
+
+  if (lines.length >= 2) {
+    name    = lines[0].replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
+    address = lines.slice(1).join(', ').replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
+  } else {
+    // Single line: detect address boundary by keywords or leading house-number pattern
+    const single = cleaned.replace(/\s{2,}/g, ' ').trim().replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
+    const addrKw = /(\bsố\s*\d+|\d+[A-Za-z]?[\/\-]\d+|\bđường\b|\bphố\b|\bphường\b|\bxã\b|\bquận\b|\bhuyện\b|\btỉnh\b|\bthành\s*phố\b|\btp[.\s]|\bngõ\b|\bngách\b|\bthôn\b|\bxóm\b|\bấp\b|\bthị\s*trấn\b|\bthị\s*xã\b)/i;
+    const m = addrKw.exec(single);
+    if (m && m.index > 0) {
+      name    = single.substring(0, m.index).replace(/[\-–—,;|\s]+$/, '').trim();
+      address = single.substring(m.index).trim();
+    } else if (m && m.index === 0) {
+      address = single;
+    } else {
+      const parts = single.split(/\s*[-–—,;|]\s*/).filter(p => p.trim());
+      if (parts.length >= 2) { name = parts[0]; address = parts.slice(1).join(', '); }
+      else name = single;
+    }
+  }
+
+  // Post-process: extract phone still stuck inside name
+  if (!phone && name) {
+    const m = name.match(/\b((?:\+84|0)\d{8,9})\b/);
+    if (m) {
+      phone = m[1];
+      name  = name.replace(m[0], '').replace(/\s{2,}/g, ' ').replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
+    }
+  }
+
+  name    = name.replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
+  address = address.replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
   return { name, phone, address };
 }
 
@@ -1542,9 +1574,15 @@ async function parseAndFill() {
   const { trackasiaKey } = getConfig();
   if (address && trackasiaKey) {
     sugEl.innerHTML = '<div class="addr-loading"><span class="spinner" style="border-top-color:var(--green-mid);border-color:rgba(0,0,0,.1)"></span> Đang tìm gợi ý...</div>';
-    const suggestions = await fetchAddressSuggestions(address, trackasiaKey);
-    if (suggestions.length) {
-      sugEl.innerHTML = suggestions.map(s => `<div class="addr-suggestion-item" onclick="useAddr('${encodeURIComponent(s)}')">${s.replace(/</g,'&lt;')}</div>`).join('');
+    const res = await fetchAddressSuggestions(address, trackasiaKey);
+    if (res.ok && res.list.length) {
+      sugEl.innerHTML = res.list.map(s => `<div class="addr-suggestion-item" onclick="useAddr('${encodeURIComponent(s)}')">${s.replace(/</g,'&lt;')}</div>`).join('');
+    } else if (!res.ok && res.err === 'key_invalid') {
+      sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--red)">⚠ API key không hợp lệ — kiểm tra lại trong Cài đặt</span>';
+    } else if (!res.ok && res.err === 'timeout') {
+      sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--orange)">⚠ Hết thời gian chờ — thử lại sau</span>';
+    } else if (!res.ok) {
+      sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--orange)">⚠ Lỗi kết nối TrackAsia (' + res.err + ')</span>';
     } else {
       sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--text-3)">Không tìm thấy gợi ý phù hợp</span>';
     }
@@ -1554,13 +1592,18 @@ async function parseAndFill() {
 }
 
 async function fetchAddressSuggestions(query, apiKey) {
+  const url = `https://api.track-asia.com/autocomplete/v2?q=${encodeURIComponent(query)}&api_key=${encodeURIComponent(apiKey)}&language=vi&country=vn&limit=5`;
   try {
-    const url = `https://api.track-asia.com/autocomplete/v2?q=${encodeURIComponent(query)}&api_key=${encodeURIComponent(apiKey)}&language=vi&country=vn&limit=5`;
-    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!r.ok) return [];
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (r.status === 401 || r.status === 403) return { ok: false, err: 'key_invalid' };
+    if (!r.ok) return { ok: false, err: 'http_' + r.status };
     const data = await r.json();
-    return (data.features || []).map(f => f.properties?.formatted || f.properties?.label || f.place_name || '').filter(Boolean);
-  } catch { return []; }
+    const list = (data.features || []).map(f => f.properties?.formatted || f.properties?.label || f.place_name || '').filter(Boolean);
+    return { ok: true, list };
+  } catch (e) {
+    const isTimeout = e.name === 'TimeoutError' || e.name === 'AbortError';
+    return { ok: false, err: isTimeout ? 'timeout' : 'network' };
+  }
 }
 
 function useAddr(val) {
