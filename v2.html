@@ -1572,7 +1572,7 @@ async function parseAndFill() {
 
   const sugEl = document.getElementById('addrSuggestions');
   const { trackasiaKey } = getConfig();
-  if (address && trackasiaKey) {
+  if (address) {
     sugEl.innerHTML = '<div class="addr-loading"><span class="spinner" style="border-top-color:var(--green-mid);border-color:rgba(0,0,0,.1)"></span> Đang tìm gợi ý...</div>';
     const res = await fetchAddressSuggestions(address, trackasiaKey);
     if (res.ok && res.list.length) {
@@ -1586,19 +1586,19 @@ async function parseAndFill() {
     } else {
       sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--text-3)">Không tìm thấy gợi ý phù hợp</span>';
     }
-  } else if (!trackasiaKey) {
-    sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--text-3)">Nhập TrackAsia key trong Cài đặt để hiện gợi ý</span>';
   }
 }
 
 async function fetchAddressSuggestions(query, apiKey) {
-  const url = `https://api.track-asia.com/autocomplete/v2?q=${encodeURIComponent(query)}&api_key=${encodeURIComponent(apiKey)}&language=vi&country=vn&limit=5`;
+  const key = apiKey || 'public_key';
+  const url = `https://maps.track-asia.com/api/v2/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}&size=5&new_admin=true`;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (r.status === 401 || r.status === 403) return { ok: false, err: 'key_invalid' };
     if (!r.ok) return { ok: false, err: 'http_' + r.status };
     const data = await r.json();
-    const list = (data.features || []).map(f => f.properties?.formatted || f.properties?.label || f.place_name || '').filter(Boolean);
+    if (data.status && data.status !== 'OK') return { ok: false, err: 'api_' + data.status };
+    const list = (data.predictions || []).map(p => p.description || p.formatted_address || '').filter(Boolean);
     return { ok: true, list };
   } catch (e) {
     const isTimeout = e.name === 'TimeoutError' || e.name === 'AbortError';
