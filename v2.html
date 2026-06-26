@@ -2216,22 +2216,24 @@ async function importOrders(event){
 /* ══ EXPORT IMAGE ══ */
 async function blobToB64(blob){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});}
 
-// Cache successful base64 conversions — failed fetches are NOT cached so they retry next export
+// Cache successful base64 conversions — failures NOT cached so they retry next export
 const _imgCache=new Map();
 async function imgToBase64(url){
   if(!url||url.startsWith('data:'))return url;
   if(_imgCache.has(url))return _imgCache.get(url);
-  const tryFetch=async(fetchUrl,ms)=>{
-    const r=await fetch(fetchUrl,{signal:AbortSignal.timeout(ms)});
-    if(!r.ok)throw new Error();
-    const b=await r.blob();if(!b.size)throw new Error();
+  const getBlob=async(fetchUrl,opts,ms)=>{
+    const r=await fetch(fetchUrl,{...opts,signal:AbortSignal.timeout(ms)});
+    if(!r.ok)throw new Error();const b=await r.blob();
+    if(!b.size)throw new Error();
     const b64=await blobToB64(b);if(!b64?.startsWith('data:image'))throw new Error();
     return b64;
   };
   let result=null;
-  try{ result=await tryFetch(WORKER(url),6000); }
-  catch{ try{ result=await tryFetch(url,4000); }catch{} }
-  if(result) _imgCache.set(url,result); // only cache success — failures retry next time
+  // 1. Fast path: direct CORS fetch (works when CDN sends Access-Control-Allow-Origin)
+  try{ result=await getBlob(url,{mode:'cors'},4000); }catch{}
+  // 2. Proxy path: Cloudflare worker (bypasses CORS, slower but reliable)
+  if(!result){ try{ result=await getBlob(WORKER(url),{},8000); }catch{} }
+  if(result) _imgCache.set(url,result);
   return result;
 }
 
