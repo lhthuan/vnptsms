@@ -217,7 +217,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 .qc-note-text{font-size:12px;color:var(--text-2);font-style:italic;background:var(--amber-light);border-left:3px solid var(--amber);padding:8px 11px;border-radius:0 6px 6px 0}
 
 /* ══ TOAST ══ */
-.toast-wrap{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:9999;pointer-events:none}
+.toast-wrap{position:fixed;bottom:110px;right:22px;display:flex;flex-direction:column;gap:7px;z-index:9999;pointer-events:none}
 .toast{padding:10px 15px;border-radius:var(--r-sm);box-shadow:var(--shadow-lg);font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;animation:tIn .22s ease;pointer-events:all;max-width:320px}
 .toast svg{width:15px;height:15px;flex-shrink:0}
 .toast.success{background:var(--green);color:#fff}
@@ -319,7 +319,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
   .qc-note{padding:8px 14px 12px}
   .mob-bottom-bar{display:flex;gap:8px;padding:10px 14px;background:#fff;border-top:1px solid var(--border);flex-shrink:0;position:sticky;bottom:0;z-index:50}
   .mob-bottom-bar .btn{flex:1;justify-content:center;font-size:13px}
-  .toast-wrap{bottom:72px;right:12px;left:12px;align-items:center}
+  .toast-wrap{bottom:148px;right:12px;left:12px;align-items:center}
   .toast{max-width:100%;width:100%;justify-content:center}
   .modal{width:100%;max-height:95vh;border-radius:var(--r-lg) var(--r-lg) 0 0;position:fixed;bottom:0;left:0;right:0}
   .modal-overlay{align-items:flex-end}
@@ -408,10 +408,15 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 .upload-area span{font-size:11.5px;color:var(--text-3)}
 
 /* Floating copy button */
-.fab-copy{position:fixed;bottom:28px;right:28px;width:52px;height:52px;border-radius:50%;background:var(--green);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(10,110,79,.38);z-index:400;transition:all .17s;flex-shrink:0}
-.fab-copy:hover{background:var(--green-dark);transform:scale(1.1);box-shadow:0 6px 22px rgba(10,110,79,.5)}
-.fab-copy svg{width:22px;height:22px;pointer-events:none}
-@media(max-width:768px){.fab-copy{bottom:80px;right:14px;width:46px;height:46px}}
+.fab-group{position:fixed;bottom:28px;right:28px;display:flex;flex-direction:column;gap:10px;z-index:400}
+.fab{width:52px;height:52px;border-radius:50%;color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(10,110,79,.38);transition:all .17s;flex-shrink:0}
+.fab:hover{transform:scale(1.1);box-shadow:0 6px 22px rgba(10,110,79,.5)}
+.fab svg{width:22px;height:22px;pointer-events:none}
+.fab-save{background:var(--orange)}
+.fab-save:hover{background:var(--orange-dark)}
+.fab-copy{background:var(--green)}
+.fab-copy:hover{background:var(--green-dark)}
+@media(max-width:768px){.fab-group{bottom:80px;right:14px}.fab{width:46px;height:46px}}
 
 /* SKU combo search dropdown */
 .sku-drop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid var(--green-mid);border-radius:var(--r-sm);box-shadow:var(--shadow-md);z-index:200;max-height:268px;overflow-y:auto}
@@ -459,10 +464,6 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       <span class="btn-label">Xuất JPG</span>
     </button>
-    <button class="btn btn-ghost" onclick="exportImage('clipboard')" id="btnCopyImg">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-      <span class="btn-label">Copy ảnh</span>
-    </button>
     <button class="btn btn-white" onclick="printQuote()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       <span class="btn-label">In / PDF</span>
@@ -505,12 +506,9 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Nhân viên lập đơn
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <select id="empSelect" style="flex:1" onchange="selectedEmployee=this.value;renderPreview()">
-            <option value="">— Chọn nhân viên —</option>
-          </select>
-          <button class="btn btn-outline btn-sm" onclick="openEmpModal()">Quản lý</button>
-        </div>
+        <select id="empSelect" onchange="selectedEmployee=this.value;renderPreview()">
+          <option value="">— Chọn nhân viên —</option>
+        </select>
       </div>
 
       <!-- Smart address parser -->
@@ -1009,10 +1007,15 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 
 </div>
 
-<!-- Floating copy image button -->
-<button class="fab-copy" onclick="exportImage('clipboard')" title="Copy ảnh báo giá">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-</button>
+<!-- Floating action buttons -->
+<div class="fab-group">
+  <button class="fab fab-save" onclick="saveCurrentOrder()" title="Lưu đơn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+  </button>
+  <button class="fab fab-copy" onclick="exportImage('clipboard')" title="Copy ảnh báo giá">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+  </button>
+</div>
 
 <!-- TOAST -->
 <div class="toast-wrap" id="toastWrap"></div>
