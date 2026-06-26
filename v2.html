@@ -2216,7 +2216,7 @@ async function importOrders(event){
 /* ══ EXPORT IMAGE ══ */
 async function blobToB64(blob){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});}
 
-// Cache base64 results across export calls — second export is instant for same images
+// Cache successful base64 conversions — failed fetches are NOT cached so they retry next export
 const _imgCache=new Map();
 async function imgToBase64(url){
   if(!url||url.startsWith('data:'))return url;
@@ -2229,9 +2229,9 @@ async function imgToBase64(url){
     return b64;
   };
   let result=null;
-  try{ result=await tryFetch(WORKER(url),4000); }
-  catch{ try{ result=await tryFetch(url,3000); }catch{} }
-  _imgCache.set(url,result); // cache success AND failure (null) to skip retry
+  try{ result=await tryFetch(WORKER(url),6000); }
+  catch{ try{ result=await tryFetch(url,4000); }catch{} }
+  if(result) _imgCache.set(url,result); // only cache success — failures retry next time
   return result;
 }
 
