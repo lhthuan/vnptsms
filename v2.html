@@ -406,6 +406,16 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 .upload-area svg{width:32px;height:32px;color:var(--text-3);margin-bottom:8px}
 .upload-area p{font-size:13px;color:var(--text-2);font-weight:600}
 .upload-area span{font-size:11.5px;color:var(--text-3)}
+
+/* SKU combo search dropdown */
+.sku-drop{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid var(--green-mid);border-radius:var(--r-sm);box-shadow:var(--shadow-md);z-index:200;max-height:268px;overflow-y:auto}
+.sku-drop::-webkit-scrollbar{width:4px}.sku-drop::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.sku-drop-item{display:flex;align-items:center;gap:9px;padding:7px 10px;cursor:pointer;border-bottom:1px solid var(--border-light);transition:background .1s}
+.sku-drop-item:hover{background:var(--green-xlight)}
+.sku-drop-item:last-child{border-bottom:none}
+.sku-drop-sku{font-family:var(--mono);font-size:10.5px;color:var(--text-3);flex-shrink:0;min-width:64px}
+.sku-drop-name{font-size:12.5px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sku-drop-price{font-size:11.5px;color:var(--green-mid);font-family:var(--mono);flex-shrink:0;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -437,7 +447,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
     </button>
     <button class="btn btn-ghost" onclick="openInvModal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-      <span class="btn-label">Nhập kho</span>
+      <span class="btn-label">Danh mục</span>
     </button>
     <button class="btn btn-ghost" onclick="exportImage('download')" id="btnExportImg">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -616,7 +626,13 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
           Tìm sản phẩm theo SKU
         </div>
         <div class="sku-box">
-          <input type="text" id="skuInput" placeholder="Nhập mã SKU, nhấn Enter..." onkeydown="if(event.key==='Enter')searchSKU()">
+          <div style="position:relative;flex:1">
+            <input type="text" id="skuInput" placeholder="Nhập mã SKU hoặc tên sản phẩm..." style="width:100%"
+              onkeydown="if(event.key==='Enter'){hideSkuDrop();searchSKU()}"
+              oninput="onSkuInput()"
+              onblur="setTimeout(hideSkuDrop,200)">
+            <div id="skuDropdown" class="sku-drop" style="display:none"></div>
+          </div>
           <button class="btn btn-green" id="btnSearch" onclick="searchSKU()">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             Tìm
@@ -1111,14 +1127,14 @@ CREATE POLICY "anon_all" ON inventory FOR ALL TO anon USING (true) WITH CHECK (t
 <div class="modal-overlay" id="invModal" onclick="if(event.target===this)closeInvModal()">
   <div class="modal" style="width:min(700px,95vw)">
     <div class="modal-header">
-      <div class="modal-title">📦 Nhập file tồn kho</div>
+      <div class="modal-title">📦 Danh mục hàng hoá</div>
       <button class="modal-close" onclick="closeInvModal()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-body">
       <div style="background:var(--amber-light);border:1px dashed #f59e0b;border-radius:var(--r-sm);padding:9px 12px;font-size:12px;color:var(--amber);margin-bottom:14px">
-        Import sẽ <strong>ghi đè</strong> dữ liệu SKU đã có. Cột bắt buộc: <strong>SKU</strong> và <strong>Tên sản phẩm</strong>. Cột tuỳ chọn: Đơn giá, ĐVT, Tồn kho.
+        Import sẽ <strong>xoá sạch danh mục cũ</strong> và ghi toàn bộ dữ liệu mới. Cột bắt buộc: <strong>Mã HH / SKU</strong> và <strong>Tên HH</strong>. Cột tuỳ chọn: Giá Bán, ĐVT Bán, Tồn kho.
       </div>
       <div class="upload-area" id="uploadArea" onclick="document.getElementById('invFileInput').click()"
            ondragover="event.preventDefault();this.classList.add('drag-over')"
@@ -1421,11 +1437,11 @@ function handleInvFile(file) {
 }
 
 const INV_COL_MAP = {
-  sku:   ['sku','mã hàng','mã sp','barcode','mã','code','ma hang','ma sp'],
-  name:  ['tên','tên hàng','tên sản phẩm','tên sp','name','ten hang','ten san pham'],
-  price: ['giá','đơn giá','giá bán','price','don gia','gia ban','gia'],
-  unit:  ['đvt','đơn vị','đơn vị tính','unit','dvt','don vi'],
-  stock: ['tồn','tồn kho','sl tồn','stock','ton kho','ton','sl ton']
+  sku:   ['mã hh','ma hh','sku','mã hàng','mã sp','barcode','mã','code','ma hang','ma sp','item code','product code'],
+  name:  ['tên hh','ten hh','tên','tên hàng','tên sản phẩm','tên sp','name','ten hang','ten san pham','product name'],
+  price: ['giá bán','gia ban','giá','đơn giá','price','don gia','gia','retail price','sell price'],
+  unit:  ['đvt bán','dvt ban','đvt','đơn vị','đơn vị tính','unit','dvt','don vi','uom'],
+  stock: ['tồn kho','ton kho','tồn','sl tồn','stock','ton','sl ton','quantity','số lượng','sl']
 };
 
 function parseInvRows(raw) {
@@ -1478,23 +1494,38 @@ async function confirmInvImport() {
   if (!pendingInvRows.length) return;
   const sb = getSb();
   if (!sb) {
+    inventoryCache = {};
     pendingInvRows.forEach(r => { inventoryCache[r.sku.toLowerCase()] = r; });
+    document.getElementById('invCacheCount').textContent = Object.keys(inventoryCache).length;
     toast(`Lưu ${pendingInvRows.length} SP vào bộ nhớ tạm (chưa có Supabase)`, 'info');
     closeInvModal();
     return;
   }
+  // Xoá toàn bộ danh mục cũ
+  const { error: delErr } = await sb.from('inventory').delete().not('sku', 'is', null);
+  if (delErr) { toast('Lỗi xoá danh mục cũ: ' + delErr.message, 'error'); return; }
+
+  // Insert toàn bộ dữ liệu mới theo chunk
   const CHUNK = 200;
   let total = 0, errMsg = '';
   for (let i = 0; i < pendingInvRows.length; i += CHUNK) {
     const chunk = pendingInvRows.slice(i, i + CHUNK);
-    const { error } = await sb.from('inventory').upsert(chunk, { onConflict: 'sku' });
+    const { error } = await sb.from('inventory').insert(chunk);
     if (error) { errMsg = error.message; break; }
     total += chunk.length;
   }
-  if (errMsg) { toast('Lỗi nhập kho: ' + errMsg, 'error'); return; }
+  if (errMsg) { toast('Lỗi nhập danh mục: ' + errMsg, 'error'); return; }
   await loadInventory();
-  toast(`✅ Đã nhập ${total} sản phẩm vào kho`, 'success');
+  toast(`✅ Đã cập nhật danh mục: ${total} sản phẩm`, 'success');
   closeInvModal();
+}
+
+/* ══ PROPER CASE ══ */
+function toProperCase(str) {
+  if (!str) return '';
+  return str.trim().replace(/\s+/g, ' ').split(' ').map(w =>
+    w ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase() : w
+  ).join(' ');
 }
 
 /* ══ ADDRESS PARSER ══ */
@@ -1565,7 +1596,9 @@ function parseCustomerInfo(text) {
 async function parseAndFill() {
   const raw = document.getElementById('customerRaw').value.trim();
   if (!raw) { toast('Vui lòng dán thông tin khách hàng', 'error'); return; }
-  const { name, phone, address } = parseCustomerInfo(raw);
+  let { name, phone, address } = parseCustomerInfo(raw);
+  name    = toProperCase(name);
+  address = toProperCase(address);
   _parsedName = name; _parsedPhone = phone; _parsedAddr = address;
 
   document.getElementById('parsedNameDisp').textContent  = name  || '(không tìm thấy)';
@@ -1625,8 +1658,41 @@ function applyParsed() {
 }
 
 let _addrSuggestTimer = null;
-function debouncedAddrSuggest() {
-  clearTimeout(_addrSuggestTimer);
+function debouncedAddrSuggest() { clearTimeout(_addrSuggestTimer); }
+
+/* ══ SKU COMBO SEARCH ══ */
+function onSkuInput() {
+  const q = document.getElementById('skuInput').value.trim().toLowerCase();
+  if (!q) { hideSkuDrop(); return; }
+  const keys = Object.keys(inventoryCache);
+  const matches = [];
+  for (const k of keys) {
+    const item = inventoryCache[k];
+    if (k.includes(q) || (item.name || '').toLowerCase().includes(q)) {
+      matches.push(item);
+      if (matches.length >= 10) break;
+    }
+  }
+  if (!matches.length) { hideSkuDrop(); return; }
+  const drop = document.getElementById('skuDropdown');
+  drop.innerHTML = matches.map(item => `
+    <div class="sku-drop-item" onmousedown="selectSkuDrop('${item.sku.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+      <span class="sku-drop-sku">${item.sku}</span>
+      <span class="sku-drop-name">${(item.name||'').replace(/</g,'&lt;')}</span>
+      <span class="sku-drop-price">${fmt(item.price||0)}₫</span>
+    </div>`).join('');
+  drop.style.display = 'block';
+}
+
+function hideSkuDrop() {
+  const d = document.getElementById('skuDropdown');
+  if (d) d.style.display = 'none';
+}
+
+function selectSkuDrop(sku) {
+  document.getElementById('skuInput').value = sku;
+  hideSkuDrop();
+  searchSKU();
 }
 
 /* ══ SKU SEARCH ══ */
@@ -1889,7 +1955,7 @@ function getSnapshot(){
   return {
     id:orderId, savedAt:new Date().toISOString(),
     total:Math.max(0,sub-dd-dv),
-    selectedNotice, created_by: selectedEmployee||null,
+    selectedNotice, created_by: (document.getElementById('empSelect')?.value) || null,
     cart:cartToSave,
     form:{
       senderName:v('senderName'),senderPhone:v('senderPhone'),
@@ -2005,16 +2071,20 @@ function _renderSavedList(list, elId, maxItems){
   const el = document.getElementById(elId);
   if (!list.length) { el.innerHTML='<div class="empty-saved">Chưa có đơn nào</div>'; return; }
   const items = maxItems ? list.slice(0,maxItems) : list;
-  el.innerHTML = items.map((o,i) => `
+  el.innerHTML = items.map((o,i) => {
+    const emp = employees.find(e => e.id === o.created_by);
+    const empTag = emp ? `<span style="background:var(--green-light);color:var(--green);padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">👤 ${emp.name.replace(/</g,'&lt;')}</span>` : '';
+    return `
     <div class="saved-item" onclick="loadOrder(${i})">
       <div class="saved-item-info">
-        <div class="saved-name">${(o.name||'').replace(/</g,'&lt;')}</div>
+        <div class="saved-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${(o.name||'').replace(/</g,'&lt;')} ${empTag}</div>
         <div class="saved-meta">${o.id} · ${o.savedAt?fmtDate(new Date(o.savedAt)):''} · ${fmt(o.total||0)} ₫</div>
       </div>
       <button class="saved-del" onclick="deleteOrder(${i},event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
       </button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function openSaveModal(){
@@ -2031,11 +2101,11 @@ async function filterSavedList(q){
   if(!kw){ renderSavedModal(); return; }
   const sb=getSb(); let list=getSaved();
   if(sb){const{data}=await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(200);if(data)list=data.map(o=>({id:o.id,name:o.name,savedAt:o.saved_at,total:o.total,cart:o.cart,form:o.form,selectedNotice:o.selected_notice,created_by:o.created_by}));}
-  const filtered=list.filter(o=>{const f=o.form||{};return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw);});
+  const filtered=list.filter(o=>{const f=o.form||{};const emp=employees.find(e=>e.id===o.created_by);const empN=(emp?.name||'').toLowerCase();return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw)||empN.includes(kw);});
   window._savedOrders=filtered;
   const el=document.getElementById('savedListModal');
   if(!filtered.length){el.innerHTML='<div class="empty-saved">Không tìm thấy đơn nào</div>';return;}
-  el.innerHTML=filtered.map((o,i)=>`<div class="saved-item" onclick="loadOrder(${i})"><div class="saved-item-info"><div class="saved-name">${(o.name||'').replace(/</g,'&lt;')}</div><div class="saved-meta">${o.id} · ${o.savedAt?fmtDate(new Date(o.savedAt)):''} · ${fmt(o.total||0)} ₫</div></div><button class="saved-del" onclick="deleteOrder(${i},event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button></div>`).join('');
+  el.innerHTML=filtered.map((o,i)=>{const emp=employees.find(e=>e.id===o.created_by);const et=emp?`<span style="background:var(--green-light);color:var(--green);padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700">👤 ${emp.name.replace(/</g,'&lt;')}</span>`:'';return`<div class="saved-item" onclick="loadOrder(${i})"><div class="saved-item-info"><div class="saved-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${(o.name||'').replace(/</g,'&lt;')} ${et}</div><div class="saved-meta">${o.id} · ${o.savedAt?fmtDate(new Date(o.savedAt)):''} · ${fmt(o.total||0)} ₫</div></div><button class="saved-del" onclick="deleteOrder(${i},event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button></div>`;}).join('');
 }
 
 /* ══ EXPORT / IMPORT JSON ══ */
