@@ -591,7 +591,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
           </div>
           <div class="field">
             <div class="field-label">Địa chỉ giao hàng</div>
-            <input type="text" id="address" placeholder="Số nhà, đường, phường, tỉnh..." oninput="renderPreview();debouncedAddrSuggest()">
+            <input type="text" id="address" placeholder="Số nhà, đường, phường, tỉnh..." oninput="_oldAddress='';renderPreview();debouncedAddrSuggest()">
           </div>
           <div class="form-grid g2">
             <div class="field">
@@ -906,6 +906,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px;flex-shrink:0"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
           <div style="display:flex;flex-direction:column;gap:3px">
             <div><strong>Giao tại:</strong> <span id="qcAddress">—</span></div>
+            <div id="qcOldAddrRow" style="display:none"><strong style="color:var(--text-3);font-size:11px">Địa chỉ cũ tham khảo:</strong> <span id="qcOldAddr" style="color:var(--text-3);font-size:11px"></span></div>
             <div><strong>Dự kiến:</strong> <span id="qcDelivery">—</span></div>
           </div>
         </div>
@@ -1582,7 +1583,7 @@ function toProperCase(str) {
 }
 
 /* ══ ADDRESS PARSER ══ */
-let _parsedName = '', _parsedPhone = '', _parsedAddr = '', _parsedPhoneInvalid = false;
+let _parsedName = '', _parsedPhone = '', _parsedAddr = '', _parsedPhoneInvalid = false, _oldAddress = '';
 
 function toggleAddrParser() {
   const sec = document.getElementById('addrParserSection');
@@ -1694,11 +1695,34 @@ async function fetchAddressConverted(query, apiKey) {
   }
 }
 
-function useAddr(val) {
+async function useAddr(val) {
   const decoded = decodeURIComponent(val);
-  document.getElementById('address').value = decoded === 'orig' ? _parsedAddr : decoded;
+  const addr = decoded === 'orig' ? _parsedAddr : decoded;
+  document.getElementById('address').value = addr;
+  _oldAddress = '';
   renderPreview();
   toast('Đã điền địa chỉ', 'success');
+  // When user picks map suggestion (new address format), silently fetch old format as reference
+  if (decoded !== 'orig' && addr) {
+    const { trackasiaKey } = getConfig();
+    const old = await fetchOldAddress(addr, trackasiaKey || TRACKASIA_KEY);
+    if (old) { _oldAddress = old; renderPreview(); }
+  }
+}
+
+async function fetchOldAddress(query, apiKey) {
+  const key = apiKey || TRACKASIA_KEY;
+  const url = `https://maps.track-asia.com/api/v2/place/convert/xml?text=${encodeURIComponent(query)}&migrate_type=new_to_old&key=${encodeURIComponent(key)}`;
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!r.ok) return null;
+    const text = await r.text();
+    const xml = new DOMParser().parseFromString(text, 'text/xml');
+    // <result><formatted_address>...</formatted_address></result>
+    const fa = xml.querySelector('result formatted_address')?.textContent
+      || xml.querySelector('formatted_address')?.textContent;
+    return fa?.trim() || null;
+  } catch { return null; }
 }
 
 function applyParsed() {
@@ -1922,6 +1946,8 @@ function renderPreview() {
   g('qcReceiverName').textContent  = val('receiverName') || '—';
   g('qcReceiverPhone').textContent = val('receiverPhone')|| '—';
   g('qcAddress').textContent  = val('address') || '—';
+  const oldRow = g('qcOldAddrRow');
+  if (oldRow) { oldRow.style.display = _oldAddress ? '' : 'none'; if (_oldAddress) g('qcOldAddr').textContent = _oldAddress; }
   const dd = val('deliveryDate');
   const dlabel = selectedNotice === 2 ? 'Nhận tại quầy' : selectedNotice === 1 ? 'Giao tại nhà' : '';
   g('qcDelivery').textContent = dd ? fmtDate(new Date(dd+'T00:00:00')) + (dlabel ? ' (' + dlabel + ')' : '') : '—';
