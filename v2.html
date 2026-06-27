@@ -1683,10 +1683,10 @@ async function fetchAddressConverted(query, apiKey) {
     if (!r.ok) return { ok: false, err: 'http_' + r.status };
     const data = await r.json();
     if (data.status && data.status !== 'OK') return { ok: false, err: 'api_' + data.status };
-    // convert API returns a single normalised address — try various response shapes
-    const result = (typeof data.result === 'string' ? data.result : null)
-      || data.result?.description || data.result?.formatted_address
-      || data.description || data.formatted_address || null;
+    // API returns { status, results: [{ formatted_address, ... }] }
+    const result = data.results?.[0]?.formatted_address
+      || (typeof data.result === 'string' ? data.result : null)
+      || data.result?.formatted_address || data.formatted_address || null;
     return result ? { ok: true, result } : { ok: false, err: 'no_result' };
   } catch (e) {
     const isTimeout = e.name === 'TimeoutError' || e.name === 'AbortError';
