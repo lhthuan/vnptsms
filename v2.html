@@ -1582,7 +1582,7 @@ function toProperCase(str) {
 }
 
 /* ══ ADDRESS PARSER ══ */
-let _parsedName = '', _parsedPhone = '', _parsedAddr = '';
+let _parsedName = '', _parsedPhone = '', _parsedAddr = '', _parsedPhoneInvalid = false;
 
 function toggleAddrParser() {
   const sec = document.getElementById('addrParserSection');
@@ -1593,102 +1593,101 @@ function toggleAddrParser() {
 }
 
 function parseCustomerInfo(text) {
-  // Phone: try strict 10-digit Vietnamese mobile first, then 9-digit fallback
-  const strictRx = /(\+84|0)(3[2-9]|5[25689]|7[06789]|8[0-9]|9[0-9])\d{7}/g;
-  const looseRx  = /\b0\d{8,9}\b/g;
-  let phone = '';
-  const strictHits = [...text.matchAll(strictRx)];
-  if (strictHits.length) {
-    phone = strictHits[0][0];
-  } else {
-    const looseHits = [...text.matchAll(looseRx)];
-    if (looseHits.length) phone = looseHits[0][0];
+  const src = text.replace(/\r\n/g, '\n').trim();
+  const sep = /[\s\-–—,;|]+/;
+
+  // Find the first phone-like token: a run of digits (possibly with spaces/dashes)
+  // where the digit count is 9-13. Name = text before it, address = text after it.
+  let phoneStart = -1, phoneEnd = -1, phoneDigits = '';
+  const tokenRx = /[0-9][0-9 \-\.]*[0-9]/g;
+  for (const m of src.matchAll(tokenRx)) {
+    const digits = m[0].replace(/\D/g, '');
+    if (digits.length >= 9 && digits.length <= 13) {
+      // Must not be embedded in a longer digit run
+      const before = m.index > 0 ? src[m.index - 1] : ' ';
+      const after  = m.index + m[0].length < src.length ? src[m.index + m[0].length] : ' ';
+      if (!/[0-9]/.test(before) && !/[0-9]/.test(after)) {
+        phoneStart = m.index;
+        phoneEnd   = m.index + m[0].length;
+        phoneDigits = digits;
+        break;
+      }
+    }
   }
 
-  // Remove phone then clean whitespace
-  let cleaned = phone ? text.replace(phone, ' ') : text;
+  // phoneInvalid = found phone but digit count ≠ 10
+  const phoneInvalid = phoneDigits.length > 0 && phoneDigits.length !== 10;
+  const phone = phoneDigits;
 
-  // Multi-line input: split by newlines — first line = name chunk, rest = address
-  const lines = cleaned.split(/\n+/).map(l => l.trim().replace(/\s{2,}/g, ' ')).filter(Boolean);
   let name = '', address = '';
-
-  if (lines.length >= 2) {
-    name    = lines[0].replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
-    address = lines.slice(1).join(', ').replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
+  if (phoneStart >= 0) {
+    name    = src.substring(0, phoneStart).replace(/[\s\n\-–—,;|]+$/g, '').trim();
+    address = src.substring(phoneEnd).replace(/^[\s\n\-–—,;|]+/, '').trim();
   } else {
-    // Single line: detect address boundary by keywords or leading house-number pattern
-    const single = cleaned.replace(/\s{2,}/g, ' ').trim().replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
-    const addrKw = /(\bsố\s*\d+|\d+[A-Za-z]?[\/\-]\d+|\bđường\b|\bphố\b|\bphường\b|\bxã\b|\bquận\b|\bhuyện\b|\btỉnh\b|\bthành\s*phố\b|\btp[.\s]|\bngõ\b|\bngách\b|\bthôn\b|\bxóm\b|\bấp\b|\bthị\s*trấn\b|\bthị\s*xã\b)/i;
-    const m = addrKw.exec(single);
-    if (m && m.index > 0) {
-      name    = single.substring(0, m.index).replace(/[\-–—,;|\s]+$/, '').trim();
-      address = single.substring(m.index).trim();
-    } else if (m && m.index === 0) {
-      address = single;
-    } else {
-      const parts = single.split(/\s*[-–—,;|]\s*/).filter(p => p.trim());
-      if (parts.length >= 2) { name = parts[0]; address = parts.slice(1).join(', '); }
-      else name = single;
-    }
-  }
-
-  // Post-process: extract phone still stuck inside name
-  if (!phone && name) {
-    const m = name.match(/\b((?:\+84|0)\d{8,9})\b/);
-    if (m) {
-      phone = m[1];
-      name  = name.replace(m[0], '').replace(/\s{2,}/g, ' ').replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
-    }
+    // No phone found — first line = name, rest = address
+    const lines = src.split('\n').map(l => l.trim()).filter(Boolean);
+    name    = lines[0] || '';
+    address = lines.slice(1).join(' ') || '';
   }
 
   name    = name.replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
   address = address.replace(/^[\s\-–—,;|]+|[\s\-–—,;|]+$/g, '').trim();
-  return { name, phone, address };
+  return { name, phone, address, phoneInvalid };
 }
 
 async function parseAndFill() {
   const raw = document.getElementById('customerRaw').value.trim();
   if (!raw) { toast('Vui lòng dán thông tin khách hàng', 'error'); return; }
-  let { name, phone, address } = parseCustomerInfo(raw);
+  let { name, phone, address, phoneInvalid } = parseCustomerInfo(raw);
   name    = toProperCase(name);
   address = toProperCase(address);
-  _parsedName = name; _parsedPhone = phone; _parsedAddr = address;
+  _parsedName = name; _parsedPhone = phone; _parsedAddr = address; _parsedPhoneInvalid = phoneInvalid;
 
-  document.getElementById('parsedNameDisp').textContent  = name  || '(không tìm thấy)';
-  document.getElementById('parsedPhoneDisp').textContent = phone || '(không tìm thấy)';
-  document.getElementById('parsedAddrOrig').textContent  = address || '(không tìm thấy)';
+  document.getElementById('parsedNameDisp').textContent = name || '(không tìm thấy)';
+
+  const phoneDisp = document.getElementById('parsedPhoneDisp');
+  phoneDisp.textContent = phone || '(không tìm thấy)';
+  phoneDisp.style.color = phoneInvalid ? 'var(--red)' : '';
+  phoneDisp.title = phoneInvalid ? `Số có ${phone.length} chữ số — cần kiểm tra lại` : '';
+
+  document.getElementById('parsedAddrOrig').textContent = address || '(không tìm thấy)';
   document.getElementById('addrParseResult').classList.add('show');
 
   const sugEl = document.getElementById('addrSuggestions');
   const { trackasiaKey } = getConfig();
   if (address) {
-    sugEl.innerHTML = '<div class="addr-loading"><span class="spinner" style="border-top-color:var(--green-mid);border-color:rgba(0,0,0,.1)"></span> Đang tìm gợi ý...</div>';
-    const res = await fetchAddressSuggestions(address, trackasiaKey || TRACKASIA_KEY);
-    if (res.ok && res.list.length) {
-      sugEl.innerHTML = res.list.map(s => `<div class="addr-suggestion-item" onclick="useAddr('${encodeURIComponent(s)}')">${s.replace(/</g,'&lt;')}</div>`).join('');
-    } else if (!res.ok && res.err === 'key_invalid') {
+    sugEl.innerHTML = '<div class="addr-loading"><span class="spinner" style="border-top-color:var(--green-mid);border-color:rgba(0,0,0,.1)"></span> Đang chuẩn hoá địa chỉ...</div>';
+    const res = await fetchAddressConverted(address, trackasiaKey || TRACKASIA_KEY);
+    if (res.ok) {
+      sugEl.innerHTML = `<div class="addr-suggestion-item" onclick="useAddr('${encodeURIComponent(res.result)}')">${res.result.replace(/</g,'&lt;')}</div>`;
+    } else if (res.err === 'key_invalid') {
       sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--red)">⚠ API key không hợp lệ — kiểm tra lại trong Cài đặt</span>';
-    } else if (!res.ok && res.err === 'timeout') {
+    } else if (res.err === 'timeout') {
       sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--orange)">⚠ Hết thời gian chờ — thử lại sau</span>';
-    } else if (!res.ok) {
-      sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--orange)">⚠ Lỗi kết nối TrackAsia (' + res.err + ')</span>';
+    } else if (res.err === 'no_result') {
+      sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--text-3)">Không tìm thấy địa chỉ chuẩn hoá</span>';
     } else {
-      sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--text-3)">Không tìm thấy gợi ý phù hợp</span>';
+      sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--orange)">⚠ Lỗi kết nối TrackAsia (' + res.err + ')</span>';
     }
+  } else {
+    sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--text-3)">Không tìm thấy địa chỉ để chuẩn hoá</span>';
   }
 }
 
-async function fetchAddressSuggestions(query, apiKey) {
+async function fetchAddressConverted(query, apiKey) {
   const key = apiKey || TRACKASIA_KEY;
-  const url = `https://maps.track-asia.com/api/v2/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${encodeURIComponent(key)}&size=5&new_admin=true&include_old_admin=true`;
+  const url = `https://maps.track-asia.com/api/v2/place/convert/json?text=${encodeURIComponent(query)}&migrate_type=old_to_new&key=${encodeURIComponent(key)}`;
   try {
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (r.status === 401 || r.status === 403) return { ok: false, err: 'key_invalid' };
     if (!r.ok) return { ok: false, err: 'http_' + r.status };
     const data = await r.json();
     if (data.status && data.status !== 'OK') return { ok: false, err: 'api_' + data.status };
-    const list = (data.predictions || []).map(p => p.description || p.formatted_address || '').filter(Boolean);
-    return { ok: true, list };
+    // convert API returns a single normalised address — try various response shapes
+    const result = (typeof data.result === 'string' ? data.result : null)
+      || data.result?.description || data.result?.formatted_address
+      || data.description || data.formatted_address || null;
+    return result ? { ok: true, result } : { ok: false, err: 'no_result' };
   } catch (e) {
     const isTimeout = e.name === 'TimeoutError' || e.name === 'AbortError';
     return { ok: false, err: isTimeout ? 'timeout' : 'network' };
@@ -1703,11 +1702,21 @@ function useAddr(val) {
 }
 
 function applyParsed() {
-  if (_parsedName)  { document.getElementById('senderName').value    = _parsedName;  document.getElementById('receiverName').value  = _parsedName; }
-  if (_parsedPhone) { document.getElementById('senderPhone').value   = _parsedPhone; document.getElementById('receiverPhone').value = _parsedPhone; }
-  if (_parsedAddr)  document.getElementById('address').value = _parsedAddr;
+  if (_parsedName) {
+    document.getElementById('senderName').value   = _parsedName;
+    document.getElementById('receiverName').value = _parsedName;
+  }
+  if (_parsedPhone) {
+    const sp = document.getElementById('senderPhone');
+    const rp = document.getElementById('receiverPhone');
+    sp.value = _parsedPhone; rp.value = _parsedPhone;
+    const bc = _parsedPhoneInvalid ? 'var(--red)' : '';
+    sp.style.borderColor = bc; rp.style.borderColor = bc;
+  }
+  if (_parsedAddr) document.getElementById('address').value = _parsedAddr;
   renderPreview();
-  toast('Đã áp dụng thông tin khách', 'success');
+  toast(_parsedPhoneInvalid ? 'Đã áp dụng — kiểm tra lại số điện thoại!' : 'Đã áp dụng thông tin khách',
+        _parsedPhoneInvalid ? 'error' : 'success');
 }
 
 let _addrSuggestTimer = null;
