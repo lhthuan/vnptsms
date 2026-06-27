@@ -1599,7 +1599,7 @@ function parseCustomerInfo(text) {
   // Find the first phone-like token: a run of digits (possibly with spaces/dashes)
   // where the digit count is 9-13. Name = text before it, address = text after it.
   let phoneStart = -1, phoneEnd = -1, phoneDigits = '';
-  const tokenRx = /[0-9][0-9 \-\.]*[0-9]/g;
+  const tokenRx = /[0-9][0-9\-\.]*[0-9]/g;  // no spaces — prevents "0912345678 6" matching as one token
   for (const m of src.matchAll(tokenRx)) {
     const digits = m[0].replace(/\D/g, '');
     if (digits.length >= 9 && digits.length <= 13) {
