@@ -694,9 +694,18 @@ export default function App() {
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
 
-    // Đọc mã đơn từ URL: ?order=ECMxxxxxx → query Supabase lấy cart → _applyRequest
-    const orderParam = new URLSearchParams(window.location.search).get('order');
-    if (orderParam) {
+    // Đọc từ URL params (mở tab mới hoặc navigate tab cũ đều đọc đúng)
+    const urlP = new URLSearchParams(window.location.search);
+    const orderParam = urlP.get('order');
+    const skuParam   = urlP.get('sku');
+    if (skuParam) {
+      // ?sku=[{maHang,tenHang,dvt,needQty}] — tra cứu trực tiếp, không cần Supabase
+      try {
+        const items = JSON.parse(decodeURIComponent(skuParam));
+        if (Array.isArray(items) && items.length) _applyRequest(items);
+      } catch {}
+    } else if (orderParam) {
+      // ?order=ECMxxxxxx — lấy cart từ Supabase orders table
       const sb = getSb();
       if (sb) {
         sb.from('orders').select('cart').eq('id', orderParam).single()

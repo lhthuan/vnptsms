@@ -2272,7 +2272,9 @@ function openInvLookupTab() {
 
 function openInvLookupWithSku(sku, tenHang, dvt) {
   if (!sku) return;
-  _openInvTab([{ maHang: sku, tenHang: tenHang || sku, dvt: dvt || '', needQty: 1 }]);
+  const base = window.location.href.replace(/\/[^/]*$/, '/');
+  const payload = encodeURIComponent(JSON.stringify([{ maHang: sku, tenHang: tenHang || sku, dvt: dvt || '', needQty: 1 }]));
+  window.open(base + 'inventory-lookup/?sku=' + payload, 'inv_lookup');
 }
 
 function openInvLookupWithCart() {
