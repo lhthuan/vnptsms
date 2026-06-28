@@ -152,16 +152,6 @@ function _mapRow(r) {
   };
 }
 
-async function _fetchPage(sb, page, PAGE, retries = 3) {
-  for (let attempt = 0; attempt < retries; attempt++) {
-    const { data, error } = await sb
-      .from(SB_TABLE).select("*").range(page * PAGE, (page + 1) * PAGE - 1);
-    if (!error && data) return data.map(_mapRow);
-    if (attempt < retries - 1) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
-  }
-  return null;
-}
-
 async function _fetchAllFromSb() {
   const sb = getSb();
   if (!sb) return [];
@@ -170,36 +160,52 @@ async function _fetchAllFromSb() {
     .from(SB_TABLE).select("*", { count: "exact", head: true });
   if (cntErr || !count) return [];
 
-  const PAGE = 2000;
-  const CONCURRENCY = 3;   // giảm từ 5 → 3 tránh rate-limit Supabase
+  // PAGE=1000 khớp với max_rows mặc định của Supabase PostgREST
+  // PAGE=2000 bị Supabase cắt còn 1000 → bỏ qua rows 1000-1999, 3000-3999... → mất nửa data
+  const PAGE = 1000;
+  const CONCURRENCY = 4;
   const totalPages = Math.ceil(count / PAGE);
-  let all = new Array(totalPages);
+  let all = new Array(totalPages).fill(null);
 
   for (let b = 0; b < totalPages; b += CONCURRENCY) {
     const batch = [];
     for (let i = b; i < Math.min(b + CONCURRENCY, totalPages); i++) batch.push(i);
-    const results = await Promise.all(batch.map(p => _fetchPage(sb, p, PAGE)));
-    results.forEach((rows, i) => { if (rows) all[batch[i]] = rows; });
-    if (_syncProgressCb) {
-      const fetched = all.filter(Boolean).reduce((s, a) => s + a.length, 0);
-      _syncProgressCb(fetched);
-    }
+    const results = await Promise.all(batch.map(async p => {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const { data, error } = await sb.from(SB_TABLE).select("*").range(p * PAGE, (p + 1) * PAGE - 1);
+        if (!error && data) return { p, rows: data.map(_mapRow) };
+        if (attempt < 2) await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+      }
+      return { p, rows: null };
+    }));
+    results.forEach(({ p, rows }) => { if (rows) all[p] = rows; });
+    if (_syncProgressCb) _syncProgressCb(all.filter(Boolean).reduce((s, a) => s + a.length, 0));
   }
 
-  const missing = all.map((v,i)=>v==null?i:null).filter(i=>i!=null);
-  if (missing.length) {
-    const retried = await Promise.all(missing.map(p => _fetchPage(sb, p, PAGE, 5)));
-    retried.forEach((rows, i) => { if (rows) all[missing[i]] = rows; });
+  // Retry tuần tự các page bị lỗi
+  for (let p = 0; p < totalPages; p++) {
+    if (all[p] !== null) continue;
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+      const { data, error } = await sb.from(SB_TABLE).select("*").range(p * PAGE, (p + 1) * PAGE - 1);
+      if (!error && data) { all[p] = data.map(_mapRow); break; }
+    }
+    if (_syncProgressCb) _syncProgressCb(all.filter(Boolean).reduce((s, a) => s + a.length, 0));
   }
 
   return all.filter(Boolean).flat();
 }
 
+let _savingCb = null; // callback khi đang ghi IndexedDB
+
 // Sync Supabase → IndexedDB nếu cache stale
 async function syncCacheIfNeeded() {
   if (!await cacheIsStale()) return false;
   const rows = await _fetchAllFromSb();
-  if (rows.length) await cacheWrite(rows);
+  if (rows.length) {
+    if (_savingCb) _savingCb(rows.length);
+    await cacheWrite(rows);
+  }
   return true;
 }
 
@@ -613,7 +619,7 @@ export default function App() {
   const [exportToast, setExportToast] = useState("");
   const [coverageResults, setCoverageResults] = useState(null);
 
-  const [syncState, setSyncState] = useState("idle");
+  const [syncState, setSyncState] = useState("idle"); // idle|syncing|saving|done|error
   const [syncCount, setSyncCount] = useState(0);
   const [dataTs, setDataTs]       = useState(() => localStorage.getItem(LS_SB_UPDATED));
   const [provinces, setProvinces] = useState([]);
@@ -674,31 +680,34 @@ export default function App() {
       }
     } catch {}
 
-    // Lắng nghe request từ tab v2.html đang mở (không cần mở tab mới)
-    const onStorage = (e) => {
-      if (e.key !== "tsp_inv_lookup_request" || !e.newValue) return;
-      try {
-        localStorage.removeItem("tsp_inv_lookup_request");
-        _applyRequest(JSON.parse(e.newValue));
-      } catch {}
+    // Lắng nghe request từ v2.html: storage event (tab khác ghi LS) + visibilitychange fallback
+    const readRequest = () => {
+      const req = localStorage.getItem("tsp_inv_lookup_request");
+      if (req) { localStorage.removeItem("tsp_inv_lookup_request"); try { _applyRequest(JSON.parse(req)); } catch {} }
     };
+    const onStorage = (e) => { if (e.key === "tsp_inv_lookup_request" && e.newValue) readRequest(); };
+    const onVisible = () => { if (document.visibilityState === "visible") readRequest(); };
     window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisible);
 
     // Load IndexedDB ngay lập tức (không chờ Supabase check) → UI hiện nhanh
     _loadFromCache().then(() => {
-      // Sau khi UI có dữ liệu, check Supabase staleness ở nền
-      _syncProgressCb = (n) => setSyncCount(n);
+      _syncProgressCb = (n) => { setSyncCount(n); setSyncState("syncing"); };
+      _savingCb = (n) => { setSyncCount(n); setSyncState("saving"); };
       setSyncState("syncing");
       syncCacheIfNeeded()
         .then(async (synced) => {
-          _syncProgressCb = null;
-          setDataTs(localStorage.getItem(LS_SB_UPDATED)); // cập nhật ngày data dù có sync hay không
+          _syncProgressCb = null; _savingCb = null;
+          setDataTs(localStorage.getItem(LS_SB_UPDATED));
           if (synced) { await _loadFromCache(); setSyncState("done"); }
           else setSyncState("idle");
         })
-        .catch(() => { _syncProgressCb = null; setSyncState("error"); });
+        .catch(() => { _syncProgressCb = null; _savingCb = null; setSyncState("error"); });
     });
-    return () => window.removeEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [_loadFromCache, _applyRequest]);
 
   const _runAutoSearch = useCallback((items, rows) => {
@@ -984,14 +993,15 @@ export default function App() {
                 </span>
               )}
               {syncState==="syncing" && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f59e0b", display:"inline-block", animation:"pulse 1s infinite" }}/> Đang tải{syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...</>}
+              {syncState==="saving"  && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#60a5fa", display:"inline-block", animation:"pulse 1s infinite" }}/> Đang lưu {syncCount.toLocaleString("vi-VN")} dòng...</>}
               {syncState==="done"    && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#7ecfab", display:"inline-block" }}/> Đã tải {activeRows.length.toLocaleString("vi-VN")} dòng</>}
               {syncState==="error"   && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f87171", display:"inline-block" }}/> Lỗi sync</>}
               {syncState==="idle" && activeRows.length>0 && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#7ecfab", display:"inline-block" }}/> {activeRows.length.toLocaleString("vi-VN")} dòng offline</>}
               <button
                 onClick={forceResync}
-                disabled={syncState==="syncing"}
+                disabled={syncState==="syncing" || syncState==="saving"}
                 title="Tải lại toàn bộ từ Supabase"
-                style={{ padding:"3px 8px", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:4, color: syncState==="syncing" ? "#3a6a9a" : "#7ecfab", fontSize:10, fontWeight:700, cursor: syncState==="syncing" ? "default" : "pointer" }}
+                style={{ padding:"3px 8px", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:4, color: (syncState==="syncing"||syncState==="saving") ? "#3a6a9a" : "#7ecfab", fontSize:10, fontWeight:700, cursor: (syncState==="syncing"||syncState==="saving") ? "default" : "pointer" }}
               >&#x21BA; Làm mới</button>
             </div>
           </div>
