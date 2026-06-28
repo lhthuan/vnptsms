@@ -840,10 +840,11 @@ export default function App() {
       try {
         const wb = XLSX.read(e.target.result, { type:"array" });
         const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" });
+        const norm = s => s.toLowerCase().replace(/[\s_]+/g,"");
         const rows = raw.map(r => {
           const keys = Object.keys(r);
-          const get = ps => { const k=keys.find(k=>ps.some(p=>k.toLowerCase().includes(p.toLowerCase()))); return k?String(r[k]).trim():""; };
-          return { chi_nhanh: get(["chi nhánh","chi nhanh","chinhanh","branch"]), tinh_thanh: get(["tỉnh thành","tinh thanh","tỉnh","tinh","province","city"]) };
+          const get = ps => { const k=keys.find(k=>ps.some(p=>norm(k).includes(norm(p)))); return k?String(r[k]).trim():""; };
+          return { chi_nhanh: get(["chi nhanh","chinhanh","branch"]), tinh_thanh: get(["tinh thanh","tinhthanh","province","tinh"]) };
         }).filter(r => r.chi_nhanh && r.tinh_thanh);
         if (!rows.length) { alert("Không tìm thấy cột chi nhánh / tỉnh thành"); setBranchUploading(false); return; }
         await saveBranchMap(rows);
