@@ -55,6 +55,34 @@ function getSb() {
   catch { return null; }
 }
 
+// ─── BRANCH MAP (chi_nhanh → tinh_thanh) ─────────────────────────────────────
+const LS_BRANCH_MAP = 'tsp_branch_map';
+let _branchMap = {};
+try { _branchMap = JSON.parse(localStorage.getItem(LS_BRANCH_MAP) || '{}'); } catch {}
+
+async function loadBranchMap() {
+  const sb = getSb();
+  if (!sb) return;
+  const { data } = await sb.from('branches').select('chi_nhanh, tinh_thanh');
+  if (data?.length) {
+    const map = {};
+    data.forEach(r => { map[String(r.chi_nhanh).trim()] = r.tinh_thanh; });
+    _branchMap = map;
+    localStorage.setItem(LS_BRANCH_MAP, JSON.stringify(map));
+  }
+}
+
+async function saveBranchMap(rows) {
+  const sb = getSb();
+  if (!sb) throw new Error("Chưa kết nối Supabase");
+  const { error } = await sb.from('branches').upsert(rows);
+  if (error) throw new Error(error.message);
+  const map = {};
+  rows.forEach(r => { map[r.chi_nhanh] = r.tinh_thanh; });
+  _branchMap = { ..._branchMap, ...map };
+  localStorage.setItem(LS_BRANCH_MAP, JSON.stringify(_branchMap));
+}
+
 // ─── OFFLINE INDEX (IndexedDB cache of Supabase data) ────────────────────────
 // v3: bỏ dedup trong cacheWrite — lưu toàn bộ 510k rows, sum khi query
 const CACHE_DB = "InvCacheDB", CACHE_VER = 3, CACHE_ST = "stock";
@@ -280,11 +308,14 @@ function normalizeRows(rows) {
   return rows.map(r => {
     const keys = Object.keys(r);
     const get = ps => { const k=keys.find(k=>ps.some(p=>k.toLowerCase().includes(p.toLowerCase()))); return k?String(r[k]).trim():""; };
+    const chiNhanh  = get(["chi nhánh","chi nhanh","chinhanh","branch"]);
+    const tinhThanh = get(["tỉnh thành","tinh thanh","tỉnh","tinh","province","city"])
+                   || _branchMap[chiNhanh] || "";
     return {
       maHang:   get(["mã hàng","ma hang","mahang","item code","itemcode","code","sku"]),
       tenHang:  get(["tên hàng","ten hang","tenhang","product name","name","product"]),
-      chiNhanh: get(["chi nhánh","chi nhanh","chinhanh","branch"]),
-      tinhThanh:get(["tỉnh thành","tinh thanh","tỉnh","tinh","province","city"]),
+      chiNhanh,
+      tinhThanh,
       maKho:    get(["mã kho","ma kho","makho","warehouse"]),
       dvt:      get(["đvt","dvt","unit","đơn vị","don vi"]),
       cuoiKy:   get(["cuối kỳ","cuoi ky","cuoiky","tồn","ton kho","quantity","qty","số lượng"]),
@@ -693,6 +724,7 @@ export default function App() {
 
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
+    loadBranchMap().catch(console.error);
 
     // Đọc từ URL params (mở tab mới hoặc navigate tab cũ đều đọc đúng)
     const urlP = new URLSearchParams(window.location.search);
@@ -792,6 +824,33 @@ export default function App() {
         setLookupItems([]); setCoverItems([]);
       } catch(err) { alert("Không đọc được file\n"+err.message); }
       setUploading(false);
+    };
+    reader.readAsArrayBuffer(file);
+  }, []);
+
+  const branchFileRef = React.useRef();
+  const [branchUploading, setBranchUploading] = useState(false);
+  const [branchCount, setBranchCount] = useState(() => Object.keys(_branchMap).length);
+
+  const handleBranchUpload = useCallback(async (file) => {
+    if (!file) return;
+    setBranchUploading(true);
+    const reader = new FileReader();
+    reader.onload = async e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type:"array" });
+        const raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:"" });
+        const rows = raw.map(r => {
+          const keys = Object.keys(r);
+          const get = ps => { const k=keys.find(k=>ps.some(p=>k.toLowerCase().includes(p.toLowerCase()))); return k?String(r[k]).trim():""; };
+          return { chi_nhanh: get(["chi nhánh","chi nhanh","chinhanh","branch"]), tinh_thanh: get(["tỉnh thành","tinh thanh","tỉnh","tinh","province","city"]) };
+        }).filter(r => r.chi_nhanh && r.tinh_thanh);
+        if (!rows.length) { alert("Không tìm thấy cột chi nhánh / tỉnh thành"); setBranchUploading(false); return; }
+        await saveBranchMap(rows);
+        setBranchCount(Object.keys(_branchMap).length);
+        alert(`Đã cập nhật ${rows.length} chi nhánh`);
+      } catch(err) { alert("Lỗi: " + err.message); }
+      setBranchUploading(false);
     };
     reader.readAsArrayBuffer(file);
   }, []);
@@ -973,6 +1032,20 @@ export default function App() {
                 }
               </div>
               <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display:"none" }} onChange={e=>handleUpload(e.target.files[0])}/>
+            </div>
+            {/* Upload bảng chi nhánh */}
+            <div style={{ marginTop:10, paddingTop:10, borderTop:"1px solid #16304f" }}>
+              <div style={{ fontSize:10, color:"#7a9bbf", marginBottom:6 }}>
+                🗺 Chi nhánh → Tỉnh thành
+                {branchCount > 0 && <span style={{ color:"#7ecfab", marginLeft:6 }}>{branchCount} CN</span>}
+              </div>
+              <button
+                onClick={() => branchFileRef.current.click()}
+                disabled={branchUploading}
+                style={{ width:"100%", padding:"6px 8px", background:"#16304f", border:"1px solid #1e4a7a", borderRadius:6, color:"#c8e8ff", fontSize:11, cursor:"pointer" }}>
+                {branchUploading ? "Đang upload..." : "📂 Upload Excel chi nhánh"}
+              </button>
+              <input ref={branchFileRef} type="file" accept=".xlsx,.xls" style={{ display:"none" }} onChange={e=>handleBranchUpload(e.target.files[0])}/>
             </div>
           </div>
         </div>
