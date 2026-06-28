@@ -848,28 +848,27 @@ export default function App() {
             <div style={s.sbTitle}><div style={s.dot}/>Kho dữ liệu</div>
             <div style={{ fontSize:10, color:"#7a9bbf", marginTop:4 }}>{fileList.length} lần import · Lưu trên Supabase</div>
             <div style={{ fontSize:10, color:"#5a8aaa", marginTop:2 }}>Upload mới → ghi đè toàn bộ</div>
+            {syncState==="syncing"
+              ? <div style={{ marginTop:8, fontSize:11, color:"#f59e0b", fontWeight:600 }}>
+                  ⏳ Đang tải{syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...
+                </div>
+              : <button
+                  onClick={forceResync}
+                  style={{ marginTop:8, width:"100%", padding:"6px 0", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:5, color:"#7ecfab", fontSize:11, fontWeight:700, cursor:"pointer" }}
+                >↺ Làm mới cache Supabase</button>
+            }
           </div>
           <div style={s.sbBody}>
             {fileList.length===0 && activeRows.length===0 && <div style={{ padding:"24px 16px", textAlign:"center", color:"#7a9bbf", fontSize:11 }}>Chưa có file nào</div>}
             {(activeFileId==="__supabase__" || syncState==="syncing") && (
-              <div style={{ ...s.fileItem(activeFileId==="__supabase__"), flexDirection:"column", alignItems:"stretch", gap:6 }}>
-                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-                  <span style={{ fontSize:16 }}>☁️</span>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={s.fileName(true)}>Dữ liệu Supabase</div>
-                    <div style={{ fontSize:10, color: syncState==="syncing" ? "#f59e0b" : "#7ecfab" }}>
-                      {syncState==="syncing"
-                        ? `Đang tải${syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...`
-                        : `${activeRows.length.toLocaleString("vi-VN")} dòng · offline cache`}
-                    </div>
+              <div style={s.fileItem(activeFileId==="__supabase__")}>
+                <span style={{ fontSize:16 }}>☁️</span>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={s.fileName(true)}>Dữ liệu Supabase</div>
+                  <div style={{ fontSize:10, color:"#7ecfab" }}>
+                    {activeRows.length.toLocaleString("vi-VN")} dòng · offline cache
                   </div>
                 </div>
-                {syncState!=="syncing" && (
-                  <button
-                    onClick={e=>{e.stopPropagation();forceResync();}}
-                    style={{ width:"100%", padding:"5px 0", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:5, color:"#7ecfab", fontSize:11, fontWeight:600, cursor:"pointer", letterSpacing:.3 }}
-                  >↺ Làm mới cache</button>
-                )}
               </div>
             )}
             {fileList.map(f=>(
