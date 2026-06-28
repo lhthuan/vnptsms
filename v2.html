@@ -591,7 +591,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
           </div>
           <div class="field">
             <div class="field-label">Địa chỉ giao hàng</div>
-            <input type="text" id="address" placeholder="Số nhà, đường, phường, tỉnh..." oninput="_oldAddress='';renderPreview();debouncedAddrSuggest()">
+            <input type="text" id="address" placeholder="Số nhà, đường, phường, tỉnh..." oninput="_oldAddress='';renderPreview();debouncedAddrSuggest()" onblur="this.value=toProperCase(this.value);renderPreview()">
           </div>
           <div class="form-grid g2">
             <div class="field">
