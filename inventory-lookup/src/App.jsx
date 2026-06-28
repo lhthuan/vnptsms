@@ -77,13 +77,16 @@ function cacheOpen() {
 
 async function cacheWrite(rows) {
   const db = await cacheOpen();
-  await new Promise((res, rej) => {
-    const tx = db.transaction(CACHE_ST, "readwrite");
-    const st = tx.objectStore(CACHE_ST);
-    st.clear();
-    rows.forEach(r => st.add(r));
-    tx.oncomplete = res; tx.onerror = () => rej(tx.error);
-  });
+  const BATCH = 20000; // chia nhỏ tránh transaction timeout với 500k+ dòng
+  for (let i = 0; i < rows.length; i += BATCH) {
+    await new Promise((res, rej) => {
+      const tx = db.transaction(CACHE_ST, "readwrite");
+      const st = tx.objectStore(CACHE_ST);
+      if (i === 0) st.clear();
+      rows.slice(i, i + BATCH).forEach(r => st.add(r));
+      tx.oncomplete = res; tx.onerror = () => rej(tx.error);
+    });
+  }
   localStorage.setItem(LS_CACHE_TS, new Date().toISOString());
 }
 
@@ -122,28 +125,48 @@ function _metaSave(list) { localStorage.setItem(SB_META_KEY, JSON.stringify(list
 
 let _syncProgressCb = null; // set by React component để hiện tiến độ
 
+function _mapRow(r) {
+  return {
+    ma_hang:    (r.ma_hang||"").toLowerCase(),
+    ten_hang:   r.ten_hang   || "",
+    chi_nhanh:  r.chi_nhanh  || "",
+    tinh_thanh: r.tinh_thanh || "",
+    ma_kho:     r.ma_kho     || "",
+    dvt:        r.dvt        || "",
+    cuoi_ky:    r.cuoi_ky    || 0,
+  };
+}
+
 async function _fetchAllFromSb() {
   const sb = getSb();
   if (!sb) return [];
-  const PAGE = 1000;
-  let from = 0, all = [], done = false;
-  while (!done) {
-    const { data, error } = await sb.from(SB_TABLE).select("*").range(from, from + PAGE - 1);
-    if (error || !data) break;
-    data.forEach(r => all.push({
-      ma_hang:   (r.ma_hang||"").toLowerCase(),
-      ten_hang:  r.ten_hang  || "",
-      chi_nhanh: r.chi_nhanh || "",
-      tinh_thanh:r.tinh_thanh|| "",
-      ma_kho:    r.ma_kho    || "",
-      dvt:       r.dvt       || "",
-      cuoi_ky:   r.cuoi_ky   || 0,
-    }));
-    if (_syncProgressCb) _syncProgressCb(all.length);
-    done = data.length < PAGE;
-    from += PAGE;
+
+  // Lấy tổng số dòng trước để chia pages song song
+  const { count, error: cntErr } = await sb
+    .from(SB_TABLE).select("*", { count: "exact", head: true });
+  if (cntErr || !count) return [];
+
+  const PAGE = 2000;        // 2k dòng/request
+  const CONCURRENCY = 5;    // 5 request song song
+  const totalPages = Math.ceil(count / PAGE);
+  const pages = Array.from({ length: totalPages }, (_, i) => i);
+  let all = new Array(totalPages);
+
+  for (let b = 0; b < pages.length; b += CONCURRENCY) {
+    const batch = pages.slice(b, b + CONCURRENCY);
+    const results = await Promise.all(
+      batch.map(p => sb.from(SB_TABLE).select("*").range(p * PAGE, (p + 1) * PAGE - 1))
+    );
+    results.forEach(({ data, error }, i) => {
+      if (!error && data) all[batch[i]] = data.map(_mapRow);
+    });
+    if (_syncProgressCb) {
+      const fetched = all.filter(Boolean).reduce((s, a) => s + a.length, 0);
+      _syncProgressCb(fetched);
+    }
   }
-  return all;
+
+  return all.filter(Boolean).flat();
 }
 
 // Sync Supabase → IndexedDB nếu cache stale
