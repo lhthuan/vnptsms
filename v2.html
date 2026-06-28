@@ -2280,7 +2280,7 @@ function openInvLookupWithCart() {
   if (!skus.length) { toast('Không có SKU nào trong đơn để tra cứu', 'error'); return; }
   if (!_orderSavedAt) { toast('Hãy lưu đơn trước khi tra tồn kho', 'error'); return; }
   const base = window.location.href.replace(/\/[^/]*$/, '/');
-  window.open(base + 'inventory-lookup/?order=' + encodeURIComponent(orderId));
+  window.open(base + 'inventory-lookup/?order=' + encodeURIComponent(orderId), 'inv_lookup');
   toast(`Mở tra tồn kho cho ${orderId} (${skus.length} SKU)`, 'success');
 }
 
