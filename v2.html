@@ -63,9 +63,17 @@ body{font-family:var(--font);background:var(--surface-2);color:var(--text);font-
 
 /* ══ LEFT PANEL ══ */
 .panel-left{background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.pl-scroll{overflow-y:auto;flex:1}
-.pl-scroll::-webkit-scrollbar{width:4px}
-.pl-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.pl-tabs{flex-shrink:0;display:flex;flex-direction:row}
+.pl-tab-btn{flex:1;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:var(--green-dark);color:#fff;cursor:pointer;user-select:none;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;border-right:1px solid rgba(255,255,255,.13);transition:background .15s}
+.pl-tab-btn:hover{background:var(--green-mid)}
+.pl-tab-btn.active{background:var(--green);border-bottom:3px solid var(--orange)}
+.pl-tab-arrow{font-size:11px;opacity:.8;transition:transform .2s}
+.pl-tab-btn.active .pl-tab-arrow{transform:rotate(90deg)}
+.pl-tab-content{flex:1;min-height:0;overflow:hidden;position:relative}
+.pl-tab-panel{display:none;height:100%;overflow-y:auto}
+.pl-tab-panel.active{display:block}
+.pl-tab-panel::-webkit-scrollbar{width:4px}
+.pl-tab-panel::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
 .section{padding:14px 16px;border-bottom:1px solid var(--border-light)}
 .section:last-child{border-bottom:none}
 .sec-title{font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1.1px;margin-bottom:11px;display:flex;align-items:center;gap:6px}
@@ -428,6 +436,20 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 .sku-drop-name{font-size:12.5px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sku-drop-price{font-size:11.5px;color:var(--green-mid);font-family:var(--mono);flex-shrink:0;white-space:nowrap}
 
+/* ══ INVENTORY-LOOKUP BRIDGE PANEL ══ */
+.sku-inv-wrap{border-top:1px solid var(--border-light);padding:8px 10px;background:var(--surface-2)}
+.sku-inv-title{font-size:10px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.sku-inv-table{width:100%;border-collapse:collapse;font-size:11px}
+.sku-inv-table th{font-size:10px;font-weight:700;color:var(--text-3);padding:3px 6px;text-align:left;background:var(--surface-3);border-bottom:1px solid var(--border-light)}
+.sku-inv-table th:last-child{text-align:right}
+.sku-inv-table td{padding:3px 6px;border-bottom:1px solid var(--border-light);color:var(--text-2)}
+.sku-inv-table td:last-child{text-align:right;font-family:var(--mono);font-weight:700;color:var(--green)}
+.sku-inv-table tr:last-child td{border-bottom:none}
+.sku-inv-total{font-family:var(--mono);font-size:11px;font-weight:800;color:var(--green);text-align:right;padding:3px 6px 0;display:block}
+.sku-inv-nodata{font-size:11px;color:var(--text-3);font-style:italic}
+.sku-inv-link{font-size:10.5px;color:var(--blue);cursor:pointer;margin-left:auto;opacity:.8}
+.sku-inv-link:hover{opacity:1;text-decoration:underline}
+
 /* ══ TRACK PANEL ══ */
 .panel-track{background:#fff;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .track-scroll{overflow-y:auto;flex:1}
@@ -554,7 +576,16 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
       Chưa kết nối Supabase — <a onclick="openSettingsModal()" style="margin-left:4px">Cài đặt ngay</a>
     </div>
 
-    <div class="pl-scroll">
+    <div class="pl-tabs">
+      <div class="pl-tab-btn active" id="tabBtnLapDon" onclick="switchPLTab('LapDon')">
+        <span>✏️ Lập đơn</span><span class="pl-tab-arrow">▸</span>
+      </div>
+      <div class="pl-tab-btn" id="tabBtnQuanLyDon" onclick="switchPLTab('QuanLyDon')">
+        <span>📋 Quản lý đơn</span><span class="pl-tab-arrow">▸</span>
+      </div>
+    </div>
+    <div class="pl-tab-content">
+    <div id="tabLapDon" class="pl-tab-panel active">
 
       <!-- Nhân viên lập đơn -->
       <div class="section">
@@ -562,7 +593,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           Nhân viên lập đơn
         </div>
-        <select id="empSelect" onchange="selectedEmployee=this.value;renderPreview()">
+        <select id="empSelect" onchange="selectedEmployee=this.value;localStorage.setItem('tsp_last_emp',this.value);renderPreview()">
           <option value="">— Chọn nhân viên —</option>
         </select>
       </div>
@@ -738,6 +769,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
               Thêm
             </button>
           </div>
+          <div id="skuInvInfo" style="display:none"></div>
         </div>
 
         <div class="json-fallback" id="jsonFallback">
@@ -872,8 +904,11 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
         </div>
       </div>
 
+    </div><!-- /tabLapDon -->
+    <div id="tabQuanLyDon" class="pl-tab-panel">
+
       <!-- Tìm kiếm & danh sách đơn hàng -->
-      <div class="section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;border-bottom:none;padding-bottom:8px">
+      <div class="section" style="border-bottom:none;padding-bottom:8px">
         <div class="track-filter-row">
           <input type="date" id="trackDateFrom" oninput="filterTrackOrders()" title="Từ ngày">
           <input type="date" id="trackDateTo" oninput="filterTrackOrders()" title="Đến ngày">
@@ -892,6 +927,12 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
             <option value="reconciled">Đối soát</option>
           </select>
         </div>
+        <div class="track-filter-row" style="margin-top:4px">
+          <select id="trackSort" onchange="filterTrackOrders()" style="width:100%;font-size:11.5px">
+            <option value="createdAt">↓ Ngày tạo</option>
+            <option value="savedAt">↓ Cập nhật gần nhất</option>
+          </select>
+        </div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin:7px 0 5px">
           <span style="font-size:11px;color:var(--text-3)"><span id="trackListCount">0</span> đơn</span>
           <button class="btn btn-green btn-sm" onclick="exportOrdersExcel()" style="font-size:11px;padding:4px 9px;gap:4px">
@@ -899,17 +940,18 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
             Excel
           </button>
         </div>
-        <div class="track-order-list" id="trackOrderList" style="flex:1;overflow-y:auto">
+        <div class="track-order-list" id="trackOrderList">
           <div style="text-align:center;padding:14px;color:var(--text-3);font-size:12px">Đang tải...</div>
         </div>
       </div>
 
-    </div>
+    </div><!-- /tabQuanLyDon -->
+    </div><!-- /pl-tab-content -->
     <!-- Mobile bottom bar -->
     <div class="mob-bottom-bar">
       <button class="btn btn-outline" onclick="clearCart()" style="color:var(--red);border-color:var(--red)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
-        Xoá đơn
+        Xoá giỏ hàng
       </button>
       <button class="btn btn-green" onclick="saveCurrentOrder()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -928,9 +970,17 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
       <div class="pr-title">Xem trước báo giá <span id="previewId">—</span><span id="unsavedBadge" style="display:none;font-size:10.5px;font-weight:700;color:#d97706;background:#fef3c7;border:1px solid #fbbf24;border-radius:4px;padding:1px 6px;margin-left:8px;white-space:nowrap">⚠ Chưa lưu</span></div>
       <div style="display:flex;gap:7px;align-items:center">
         <span class="chip" id="prodCountChip">0 sản phẩm</span>
+        <button class="btn btn-outline btn-sm" id="btnCopySku" onclick="copyAllSku()" style="display:none" title="Copy tất cả SKU vào clipboard">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          Copy SKU
+        </button>
+        <button class="btn btn-outline btn-sm" id="btnCheckInv" onclick="openInvLookupWithCart()" style="display:none" title="Kiểm tra tồn kho chi tiết các SKU trong đơn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+          Tra tồn kho
+        </button>
         <button class="btn btn-outline btn-sm" onclick="clearCart()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6M9 6V4h6v2"/></svg>
-          Xoá đơn
+          Xoá giỏ hàng
         </button>
         <button class="btn btn-green btn-sm" onclick="saveCurrentOrder()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -1195,6 +1245,19 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS pharmacy_id UUID REFERENCES pharmaci
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_code TEXT DEFAULT '';
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_provider_id UUID REFERENCES shipping_providers(id) ON DELETE SET NULL;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status_timestamps JSONB DEFAULT '{}';
+-- Bảng tồn kho theo chi nhánh (dùng bởi Tra cứu tồn kho)
+CREATE TABLE IF NOT EXISTS stock_by_branch (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ma_hang TEXT NOT NULL,
+  ten_hang TEXT DEFAULT '',
+  chi_nhanh TEXT DEFAULT '',
+  tinh_thanh TEXT DEFAULT '',
+  ma_kho TEXT DEFAULT '',
+  dvt TEXT DEFAULT '',
+  cuoi_ky NUMERIC DEFAULT 0,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_stock_ma_hang ON stock_by_branch(ma_hang);
 -- RLS
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders    ENABLE ROW LEVEL SECURITY;
@@ -1205,7 +1268,9 @@ CREATE POLICY "anon_all" ON employees FOR ALL TO anon USING (true) WITH CHECK (t
 CREATE POLICY "anon_all" ON orders    FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON inventory FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON pharmacies FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "anon_all" ON shipping_providers FOR ALL TO anon USING (true) WITH CHECK (true);</pre>
+CREATE POLICY "anon_all" ON shipping_providers FOR ALL TO anon USING (true) WITH CHECK (true);
+ALTER TABLE stock_by_branch ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "anon_all" ON stock_by_branch FOR ALL TO anon USING (true) WITH CHECK (true);</pre>
         </div>
       </div>
     </div>
@@ -1432,6 +1497,12 @@ CREATE POLICY "anon_all" ON shipping_providers FOR ALL TO anon USING (true) WITH
               <option value="reconciled">Đối soát</option>
             </select>
           </div>
+          <div style="margin-bottom:7px">
+            <select id="modalSort" onchange="filterSavedList(document.getElementById('savedSearchInput').value)" style="width:100%;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font)">
+              <option value="createdAt">↓ Ngày tạo (mặc định)</option>
+              <option value="savedAt">↓ Cập nhật gần nhất</option>
+            </select>
+          </div>
           <div style="position:relative;margin-bottom:8px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-3);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input type="text" id="savedSearchInput" placeholder="Tìm mã đơn, tên, SĐT..."
@@ -1461,6 +1532,38 @@ const API_URL = sku => `https://trungson-api.lamhieuthuan.workers.dev/?sku=${enc
 const WORKER  = url => `https://trungson-api.lamhieuthuan.workers.dev/?imgurl=${encodeURIComponent(url)}`;
 
 function getConfig() { try { return JSON.parse(localStorage.getItem('tsp_v2_config') || '{}'); } catch { return {}; } }
+
+/* ══ INVENTORY-LOOKUP / STOCK_BY_BRANCH BRIDGE ══ */
+const _parseInvQty = v => { const n = parseFloat(String(v).replace(/[^0-9.-]/g,'')); return isNaN(n)?0:n; };
+
+function _sbRowToInv(r) {
+  return { maHang:r.ma_hang, tenHang:r.ten_hang, chiNhanh:r.chi_nhanh, tinhThanh:r.tinh_thanh, maKho:r.ma_kho, dvt:r.dvt, cuoiKy:r.cuoi_ky };
+}
+
+async function invLookupSku(sku) {
+  if (!sku) return [];
+  const sb = getSb();
+  if (!sb) return [];
+  try {
+    const { data } = await sb.from('stock_by_branch').select('*').ilike('ma_hang', sku).limit(100);
+    return (data||[]).map(_sbRowToInv);
+  } catch { return []; }
+}
+
+async function invLookupSkus(skus) {
+  if (!skus.length) return {};
+  const sb = getSb();
+  if (!sb) return {};
+  try {
+    const { data } = await sb.from('stock_by_branch').select('*').in('ma_hang', skus).limit(2000);
+    const out = {};
+    (data||[]).forEach(r => {
+      const key = r.ma_hang.toLowerCase();
+      (out[key] = out[key]||[]).push(_sbRowToInv(r));
+    });
+    return out;
+  } catch { return {}; }
+}
 function setConfig(c) { localStorage.setItem('tsp_v2_config', JSON.stringify(c)); }
 
 /* ══ SUPABASE ══ */
@@ -1579,7 +1682,11 @@ function renderEmployeeDropdown() {
   const cur = sel.value;
   sel.innerHTML = '<option value="">— Chọn nhân viên —</option>' +
     employees.map(e => `<option value="${e.id}">${e.name}${e.role ? ' · ' + e.role : ''}</option>`).join('');
-  if (cur && employees.find(e => e.id === cur)) sel.value = cur;
+  if (cur && employees.find(e => e.id === cur)) { sel.value = cur; }
+  else {
+    const lastEmp = localStorage.getItem('tsp_last_emp');
+    if (lastEmp && employees.find(e => e.id === lastEmp)) { sel.value = lastEmp; selectedEmployee = lastEmp; }
+  }
 }
 
 function renderEmpList() {
@@ -2103,7 +2210,7 @@ async function searchSKU() {
   }
 }
 
-function showSKUResult(d) {
+async function showSKUResult(d) {
   currentSKU = d;
   const unitF = (d.features||[]).find(f => f.name === 'Đơn vị tính');
   const packF = (d.features||[]).find(f => f.name === 'Quy cách');
@@ -2118,6 +2225,51 @@ function showSKUResult(d) {
   document.getElementById('isPromo').checked = false;
   document.getElementById('skuResult').classList.add('show');
   document.getElementById('jsonFallback').classList.remove('show');
+  // Hiển thị tồn kho từ inventory-lookup IndexedDB
+  const invEl = document.getElementById('skuInvInfo');
+  if (!invEl) return;
+  invEl.style.display = 'block';
+  invEl.innerHTML = '<div class="sku-inv-wrap"><div class="sku-inv-title">📦 Đang tải tồn kho...</div></div>';
+  const rows = await invLookupSku(d.sku);
+  if (!rows.length) {
+    invEl.innerHTML = `<div class="sku-inv-wrap">
+      <div class="sku-inv-title">📦 Tồn kho theo chi nhánh <a class="sku-inv-link" onclick="openInvLookupTab()">Mở Tra cứu tồn kho ↗</a></div>
+      <div class="sku-inv-nodata">Chưa có dữ liệu — import file Excel trong Tra cứu tồn kho để hiển thị</div>
+    </div>`;
+    return;
+  }
+  const total = rows.reduce((s,r) => s + _parseInvQty(r.cuoiKy), 0);
+  const shown = rows.slice(0,6);
+  const moreCount = rows.length - shown.length;
+  const trs = shown.map(r => `<tr>
+    <td>${(r.chiNhanh||'—').replace(/</g,'&lt;')}</td>
+    <td>${(r.tinhThanh||'—').replace(/</g,'&lt;')}</td>
+    <td>${_parseInvQty(r.cuoiKy).toLocaleString('vi-VN')} ${r.dvt||''}</td>
+  </tr>`).join('');
+  const moreRow = moreCount > 0 ? `<tr><td colspan="3" style="text-align:center;font-size:10px;color:var(--text-3)">+${moreCount} chi nhánh khác</td></tr>` : '';
+  invEl.innerHTML = `<div class="sku-inv-wrap">
+    <div class="sku-inv-title">📦 Tồn kho (${rows.length} CN) <a class="sku-inv-link" onclick="openInvLookupTab()">Tra cứu chi tiết ↗</a></div>
+    <table class="sku-inv-table">
+      <thead><tr><th>Chi nhánh</th><th>Tỉnh</th><th style="text-align:right">Tồn cuối kỳ</th></tr></thead>
+      <tbody>${trs}${moreRow}</tbody>
+    </table>
+    <span class="sku-inv-total">Tổng: ${total.toLocaleString('vi-VN')} ${rows[0]?.dvt||''}</span>
+  </div>`;
+}
+
+function openInvLookupTab() {
+  const base = window.location.href.replace(/\/[^/]*$/, '/');
+  window.open(base + 'inventory-lookup/', '_blank');
+}
+
+function openInvLookupWithCart() {
+  const skus = cart.filter(p => p.sku && !p.promo);
+  if (!skus.length) { toast('Không có SKU nào trong đơn để tra cứu', 'error'); return; }
+  const payload = skus.map(p => ({ maHang: p.sku, tenHang: p.name, dvt: p.unit, needQty: p.qty }));
+  localStorage.setItem('tsp_inv_lookup_request', JSON.stringify(payload));
+  const base = window.location.href.replace(/\/[^/]*$/, '/');
+  window.open(base + 'inventory-lookup/', '_blank');
+  toast(`Đã gửi ${payload.length} SKU → Tra cứu tồn kho`, 'success');
 }
 
 function parseJSON() {
@@ -2212,7 +2364,7 @@ function renderPreview() {
   if (document.activeElement !== g('qcOrderId')) g('qcOrderId').textContent = orderId;
   g('previewId').textContent = orderId;
   updateUnsavedBadge();
-  g('qcDate').textContent    = 'Ngày lập: ' + fmtDate(new Date());
+  g('qcDate').textContent    = _orderSavedAt ? 'Cập nhật: ' + fmtDateTime(new Date(_orderSavedAt)) : 'Ngày lập: ' + fmtDate(new Date());
   g('qcSenderName').textContent    = val('senderName')   || '—';
   g('qcSenderPhone').textContent   = val('senderPhone')  || '—';
   g('qcReceiverName').textContent  = val('receiverName') || '—';
@@ -2266,6 +2418,10 @@ function renderPreview() {
 
   g('qcProdCount').textContent   = cart.length;
   g('prodCountChip').textContent = cart.length + ' sản phẩm';
+  const btnCopySku = g('btnCopySku');
+  if (btnCopySku) btnCopySku.style.display = cart.some(p=>p.sku) ? '' : 'none';
+  const btnCheckInv = g('btnCheckInv');
+  if (btnCheckInv) btnCheckInv.style.display = cart.some(p=>p.sku&&!p.promo) ? '' : 'none';
   const badge = document.getElementById('mobProdBadge');
   if (badge) { badge.textContent = cart.length; badge.style.display = cart.length ? 'inline' : 'none'; }
 
@@ -2290,9 +2446,30 @@ function renderPreview() {
   if (note) g('qcNoteText').textContent = note;
 }
 
+function copyAllSku() {
+  const skus = cart.map(p => p.sku).filter(Boolean);
+  if (!skus.length) { toast('Không có SKU nào trong đơn', 'error'); return; }
+  navigator.clipboard.writeText(skus.join('\n'))
+    .then(() => toast(`Đã copy ${skus.length} SKU vào clipboard`, 'success'))
+    .catch(() => {
+      const ta = document.createElement('textarea');
+      ta.value = skus.join('\n'); ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast(`Đã copy ${skus.length} SKU vào clipboard`, 'success');
+    });
+}
+
 function updateQty(i,v){ cart[i].qty=Math.max(1,parseInt(v)||1); _hasUnsavedChanges=true; renderPreview(); }
 function removeItem(i){ const n=cart[i].name; cart.splice(i,1); _hasUnsavedChanges=true; renderPreview(); toast('Đã xoá: '+n,'info'); }
-function clearCart(){ if(!cart.length)return; if(!confirm('Xoá toàn bộ?'))return; cart=[]; _hasUnsavedChanges=false; renderPreview(); toast('Đã xoá đơn','info'); }
+function switchPLTab(tab) {
+  ['LapDon','QuanLyDon'].forEach(t => {
+    document.getElementById('tab'+t)?.classList.toggle('active', t===tab);
+    document.getElementById('tabBtn'+t)?.classList.toggle('active', t===tab);
+  });
+}
+
+function clearCart(){ if(!cart.length)return; if(!confirm('Xoá toàn bộ giỏ hàng?'))return; cart=[]; _hasUnsavedChanges=false; renderPreview(); toast('Đã xoá giỏ hàng','info'); }
 
 /* ══ ORDER ID ══ */
 function makeECMId() {
@@ -2311,7 +2488,7 @@ let orderId = makeECMId();
 
 function newOrder(){
   if(cart.length && !confirm('Tạo đơn mới sẽ xoá đơn hiện tại?'))return;
-  cart=[]; orderId=makeECMId(); _isNewOrder=true;
+  cart=[]; orderId=makeECMId(); _isNewOrder=true; _orderCreatedAt=new Date().toISOString(); _orderSavedAt='';
   ['senderName','senderPhone','receiverName','receiverPhone','address','orderNote']
     .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('deliveryDate').value=new Date(Date.now()+2*86400000).toISOString().split('T')[0];
@@ -2325,8 +2502,14 @@ function newOrder(){
   NOTICES.forEach((_,i)=>{ const p=document.getElementById('noticePill'+i); if(p) p.classList.toggle('active',i===0); });
   document.getElementById('skuResult').classList.remove('show');
   document.getElementById('jsonFallback').classList.remove('show');
+  const lastEmp = localStorage.getItem('tsp_last_emp');
+  if (lastEmp && employees.find(e => e.id === lastEmp)) {
+    selectedEmployee = lastEmp;
+    const empEl = document.getElementById('empSelect'); if (empEl) empEl.value = lastEmp;
+  }
+  switchPLTab('LapDon');
   renderPreview(); renderTrackCurrentOrder(); toast('Đơn mới: '+orderId,'success');
-  setTimeout(()=>{ const ta=document.getElementById('customerRaw'); if(ta)ta.focus(); },80);
+  setTimeout(()=>{ const ta=document.getElementById('customerRaw'); if(ta){ta.focus();ta.select();} },100);
 }
 
 /* ══ SAVE / LOAD ══ */
@@ -2340,7 +2523,7 @@ function getSnapshot(){
   const sf=parseFloat(v('shipFee'))||0;
   const cartToSave = cart.map(p=>({...p, img: p.img&&p.img.startsWith('data:')?(p._rawImg||''):p.img}));
   return {
-    id:orderId, savedAt:new Date().toISOString(),
+    id:orderId, createdAt:_orderCreatedAt||new Date().toISOString(), savedAt:new Date().toISOString(),
     total:Math.max(0,sub-dd-dv),
     selectedNotice, created_by: (document.getElementById('empSelect')?.value) || null,
     status: _currentOrderStatus.status,
@@ -2368,8 +2551,8 @@ async function saveCurrentOrder(){
   const rec  = snap.form.receiverName;
   snap.name  = rec ? `Đơn ${rec} – ${fmtDate(new Date())}` : `${snap.id} – ${fmtDate(new Date())}`;
   await _persistOrder(snap);
-  _hasUnsavedChanges = false;
-  updateUnsavedBadge();
+  _hasUnsavedChanges = false; _orderSavedAt = snap.savedAt;
+  updateUnsavedBadge(); renderPreview();
   await refreshSavedUI();
   renderTrackCurrentOrder();
   await loadTrackOrders();
@@ -2382,8 +2565,8 @@ async function saveOrder(){
   const rec = snap.form.receiverName;
   snap.name = rec ? `Đơn ${rec} – ${fmtDate(new Date())}` : `${snap.id} – ${fmtDate(new Date())}`;
   await _persistOrder(snap);
-  _hasUnsavedChanges = false;
-  updateUnsavedBadge();
+  _hasUnsavedChanges = false; _orderSavedAt = snap.savedAt;
+  updateUnsavedBadge(); renderPreview();
   await refreshSavedUI();
   renderSavedModal();
   closeSaveModal();
@@ -2403,7 +2586,7 @@ async function _persistOrder(snap) {
     const { error } = await sb.from('orders').upsert({
       id: snap.id, name: snap.name,
       saved_at: snap.savedAt, total: snap.total,
-      cart: snap.cart, form: snap.form,
+      cart: snap.cart, form: {...snap.form, _createdAt: snap.createdAt},
       selected_notice: snap.selectedNotice,
       created_by: snap.created_by || null,
       status: snap.status || 'quoted',
@@ -2421,7 +2604,7 @@ window._savedOrders = [];
 
 function _mapOrder(o) {
   return {
-    id:o.id, name:o.name, savedAt:o.saved_at||o.savedAt, total:o.total,
+    id:o.id, name:o.name, createdAt:o.created_at_order||o.createdAt||o.form?._createdAt||o.saved_at||o.savedAt, savedAt:o.saved_at||o.savedAt, total:o.total,
     cart:o.cart, form:o.form, selectedNotice:o.selected_notice??o.selectedNotice??0,
     created_by:o.created_by,
     status:o.status||'quoted', erp_code:o.erp_code||'',
@@ -2462,7 +2645,9 @@ async function renderSavedModal() {
 
 function _applyOrderToForm(o) {
   cart = JSON.parse(JSON.stringify(o.cart||[]));
-  orderId = o.id; _isNewOrder = false; _expandedStep = null;
+  orderId = o.id; _isNewOrder = false; _expandedStep = null; _editingStep = null;
+  _orderCreatedAt = o.createdAt || o.savedAt || '';
+  _orderSavedAt = o.savedAt || '';
   selectedNotice = o.selectedNotice ?? 0;
   selectedEmployee = o.created_by || '';
   document.getElementById('empSelect').value = selectedEmployee;
@@ -2505,6 +2690,7 @@ async function deleteOrder(idx, e){
   setSaved(list);
   const sb = getSb();
   if (sb) { await sb.from('orders').delete().eq('id',o.id); }
+  window._savedModalHadDeletion = true;
   await refreshSavedUI(); renderSavedModal(); toast('Đã xoá','info');
 }
 
@@ -2522,7 +2708,7 @@ function _renderSavedList(list, elId, maxItems){
     <div class="saved-item" onclick="loadOrder(${i})">
       <div class="saved-item-info">
         <div class="saved-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${(o.name||'').replace(/</g,'&lt;')} ${empTag} ${stTag}</div>
-        <div class="saved-meta">${o.id} · ${o.savedAt?fmtDateTime(new Date(o.savedAt)):''} · ${fmt(o.total||0)} ₫</div>
+        <div class="saved-meta">${o.id} · ${(o.createdAt||o.savedAt)?fmtDateTime(new Date(o.createdAt||o.savedAt)):''} · ${fmt(o.total||0)} ₫</div>
       </div>
       <button class="saved-del" onclick="deleteOrder(${i},event)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
@@ -2532,12 +2718,16 @@ function _renderSavedList(list, elId, maxItems){
 }
 
 function openSaveModal(){
+  window._savedModalHadDeletion = false;
   const s=document.getElementById('savedSearchInput'); if(s) s.value='';
   ['modalDateFrom','modalDateTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   renderSavedModal();
   document.getElementById('saveModal').classList.add('open');
 }
-function closeSaveModal(){ document.getElementById('saveModal').classList.remove('open'); }
+function closeSaveModal(){
+  document.getElementById('saveModal').classList.remove('open');
+  if (window._savedModalHadDeletion) { window._savedModalHadDeletion = false; loadTrackOrders(); }
+}
 
 async function filterSavedList(q){
   const kw=(q||'').trim().toLowerCase();
@@ -2549,10 +2739,16 @@ async function filterSavedList(q){
   if(sb){const{data}=await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(500);if(data)list=data.map(_mapOrder);}
   let filtered=list;
   if(kw) filtered=filtered.filter(o=>{const f=o.form||{};const emp=employees.find(e=>e.id===o.created_by);return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw)||((emp?.name||'').toLowerCase()).includes(kw);});
-  if(dateFrom) filtered=filtered.filter(o=>o.savedAt&&o.savedAt>=dateFrom);
-  if(dateTo)   filtered=filtered.filter(o=>o.savedAt&&o.savedAt.slice(0,10)<=dateTo);
+  if(dateFrom) filtered=filtered.filter(o=>{const d=o.createdAt||o.savedAt;return d&&d>=dateFrom;});
+  if(dateTo)   filtered=filtered.filter(o=>{const d=o.createdAt||o.savedAt;return d&&d.slice(0,10)<=dateTo;});
   if(creator)  filtered=filtered.filter(o=>o.created_by===creator);
   if(status)   filtered=filtered.filter(o=>(o.status||'quoted')===status);
+  const sortBy = document.getElementById('modalSort')?.value || 'createdAt';
+  filtered = [...filtered].sort((a,b) => {
+    const da = sortBy==='savedAt' ? (a.savedAt||a.createdAt||'') : (a.createdAt||a.savedAt||'');
+    const db = sortBy==='savedAt' ? (b.savedAt||b.createdAt||'') : (b.createdAt||b.savedAt||'');
+    return db.localeCompare(da);
+  });
   window._savedOrders=filtered;
   _renderSavedList(filtered,'savedListModal',500);
 }
@@ -2683,11 +2879,15 @@ let pharmacies = [];
 let shippingProviders = [];
 let _currentOrderStatus = { status:'quoted', erp_code:'', pharmacy_id:'', tracking_code:'', shipping_provider_id:'', status_timestamps:{} };
 let _expandedStep = null;
+let _editingStep = null;
 let _hasUnsavedChanges = false;
 let _settingsPinVerified = false;
+let _orderCreatedAt = '';
+let _orderSavedAt = '';
 
 function toggleStepExpand(key, event) {
   if (event && event.target.closest('button,input,select')) return;
+  if (_expandedStep !== key) _editingStep = null;
   _expandedStep = (_expandedStep === key) ? null : key;
   renderTrackCurrentOrder();
 }
@@ -2779,23 +2979,54 @@ function renderTrackCurrentOrder() {
               </div>`;
             }
           } else if (isDone) {
-            // Done step: read-only info panel with timestamp
+            // Done step: read-only info panel with timestamp + edit option
             const ts = _currentOrderStatus.status_timestamps?.[s.key];
             const tsStr = ts ? `<div style="font-size:10px;color:var(--text-3);margin-top:3px">🕐 ${fmtDateTime(new Date(ts))}</div>` : '';
+            const isEditing = _editingStep === s.key;
             if (s.key === 'pharmacy_sent') {
               const ph2 = pharmacies.find(p=>p.id===_currentOrderStatus.pharmacy_id);
-              detail = `<div class="step-extra-form" style="background:var(--surface-2);border-radius:6px;padding:8px;gap:3px" onclick="event.stopPropagation()">
-                <div style="font-size:11px;color:var(--text-3)">Nhà thuốc: <strong style="color:var(--text)">${ph2?.name?.replace(/</g,'&lt;')||'—'}</strong></div>
-                <div style="font-size:11px;color:var(--text-3)">Mã ERP: <strong style="color:var(--text);font-family:var(--mono)">${_currentOrderStatus.erp_code||'—'}</strong></div>
-                ${tsStr}
-              </div>`;
+              if (isEditing) {
+                detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                  <input type="text" id="editErpCode" value="${(_currentOrderStatus.erp_code||'').replace(/"/g,'&quot;')}" placeholder="Mã đơn ERP (tuỳ chọn)">
+                  <select id="editPharmacyId" style="width:100%">
+                    <option value="">— Chọn nhà thuốc —</option>
+                    ${pharmacies.map(p=>`<option value="${p.id.replace(/"/g,'&quot;')}" ${_currentOrderStatus.pharmacy_id===p.id?'selected':''}>${(p.code?p.code+' – ':'')+p.name.replace(/</g,'&lt;')}</option>`).join('')}
+                  </select>
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="saveStepEdit('pharmacy_sent')">Lưu</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center" onclick="event.stopPropagation();_editingStep=null;renderTrackCurrentOrder()">Huỷ</button>
+                  </div>
+                </div>`;
+              } else {
+                detail = `<div class="step-extra-form" style="background:var(--surface-2);border-radius:6px;padding:8px;gap:3px" onclick="event.stopPropagation()">
+                  <div style="font-size:11px;color:var(--text-3)">Nhà thuốc: <strong style="color:var(--text)">${ph2?.name?.replace(/</g,'&lt;')||'—'}</strong></div>
+                  <div style="font-size:11px;color:var(--text-3)">Mã ERP: <strong style="color:var(--text);font-family:var(--mono)">${_currentOrderStatus.erp_code||'—'}</strong></div>
+                  ${tsStr}
+                  <button class="btn btn-outline btn-sm" style="margin-top:4px;color:var(--red);border-color:var(--red)" onclick="event.stopPropagation();_editingStep='pharmacy_sent';renderTrackCurrentOrder()">Chỉnh sửa</button>
+                </div>`;
+              }
             } else if (s.key === 'shipped') {
               const sp3 = shippingProviders.find(p=>p.id===_currentOrderStatus.shipping_provider_id);
-              detail = `<div class="step-extra-form" style="background:var(--surface-2);border-radius:6px;padding:8px;gap:3px" onclick="event.stopPropagation()">
-                <div style="font-size:11px;color:var(--text-3)">Nhà vận chuyển: <strong style="color:var(--text)">${sp3?.name?.replace(/</g,'&lt;')||'—'}</strong></div>
-                <div style="font-size:11px;color:var(--text-3)">Mã vận đơn: <strong style="color:var(--text);font-family:var(--mono)">${_currentOrderStatus.tracking_code||'—'}</strong></div>
-                ${tsStr}
-              </div>`;
+              if (isEditing) {
+                detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                  <select id="editShipper" style="width:100%">
+                    <option value="">— Nhà vận chuyển —</option>
+                    ${shippingProviders.map(p=>`<option value="${p.id}" ${_currentOrderStatus.shipping_provider_id===p.id?'selected':''}>${p.name.replace(/</g,'&lt;')}</option>`).join('')}
+                  </select>
+                  <input type="text" id="editTrackCode" value="${(_currentOrderStatus.tracking_code||'').replace(/"/g,'&quot;')}" placeholder="Mã vận đơn">
+                  <div style="display:flex;gap:6px">
+                    <button class="btn btn-green btn-sm" style="flex:1;justify-content:center" onclick="saveStepEdit('shipped')">Lưu</button>
+                    <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center" onclick="event.stopPropagation();_editingStep=null;renderTrackCurrentOrder()">Huỷ</button>
+                  </div>
+                </div>`;
+              } else {
+                detail = `<div class="step-extra-form" style="background:var(--surface-2);border-radius:6px;padding:8px;gap:3px" onclick="event.stopPropagation()">
+                  <div style="font-size:11px;color:var(--text-3)">Nhà vận chuyển: <strong style="color:var(--text)">${sp3?.name?.replace(/</g,'&lt;')||'—'}</strong></div>
+                  <div style="font-size:11px;color:var(--text-3)">Mã vận đơn: <strong style="color:var(--text);font-family:var(--mono)">${_currentOrderStatus.tracking_code||'—'}</strong></div>
+                  ${tsStr}
+                  <button class="btn btn-outline btn-sm" style="margin-top:4px;color:var(--red);border-color:var(--red)" onclick="event.stopPropagation();_editingStep='shipped';renderTrackCurrentOrder()">Chỉnh sửa</button>
+                </div>`;
+              }
             } else {
               detail = `<div class="step-extra-form" style="background:var(--surface-2);border-radius:6px;padding:6px 8px" onclick="event.stopPropagation()">${tsStr||'<span style="font-size:10.5px;color:var(--text-3)">✓ Đã hoàn thành</span>'}</div>`;
             }
@@ -2882,6 +3113,33 @@ function selectPharm(id, code, name) {
 }
 
 async function advanceStatus(key) {
+  // Kiểm tra tồn kho trước khi chốt đơn
+  if (key === 'confirmed') {
+    const skusInCart = cart.filter(p => p.sku && !p.promo).map(p => p.sku);
+    if (skusInCart.length) {
+      const invMap = await invLookupSkus(skusInCart);
+      const missing = cart.filter(p => p.sku && !p.promo && !(invMap[p.sku.toLowerCase()]||[]).length);
+      if (missing.length) {
+        const names = missing.slice(0,3).map(p => `• ${p.name} (${p.sku})`).join('\n');
+        const more  = missing.length > 3 ? `\n  ...và ${missing.length-3} SP khác` : '';
+        if (!confirm(`⚠ Không có dữ liệu tồn kho cho:\n${names}${more}\n\nVẫn chốt đơn?`)) return;
+      } else {
+        const low = cart.filter(p => {
+          if (!p.sku || p.promo) return false;
+          const total = (invMap[p.sku.toLowerCase()]||[]).reduce((s,r) => s + _parseInvQty(r.cuoiKy), 0);
+          return total > 0 && total < p.qty;
+        });
+        if (low.length) {
+          const names = low.slice(0,3).map(p => {
+            const total = (invMap[p.sku.toLowerCase()]||[]).reduce((s,r) => s + _parseInvQty(r.cuoiKy), 0);
+            return `• ${p.name}: cần ${p.qty}, tổng tồn ${total.toLocaleString('vi-VN')}`;
+          }).join('\n');
+          const more = low.length > 3 ? `\n  ...và ${low.length-3} SP khác` : '';
+          if (!confirm(`⚠ Tồn kho (tổng tất cả chi nhánh) có thể không đủ:\n${names}${more}\n\nVẫn tiếp tục chốt đơn?`)) return;
+        }
+      }
+    }
+  }
   const extra = {};
   if (key==='pharmacy_sent') {
     extra.erp_code = document.getElementById('stepErpCode')?.value.trim()||'';
@@ -2899,6 +3157,23 @@ async function advanceStatus(key) {
   await loadTrackOrders();
   const s = ORDER_STATUS_FLOW.find(s=>s.key===key);
   toast(`Cập nhật: ${s?.label}`, 'success');
+}
+
+async function saveStepEdit(key) {
+  if (key === 'pharmacy_sent') {
+    const erp = document.getElementById('editErpCode')?.value?.trim() || '';
+    const pharmId = document.getElementById('editPharmacyId')?.value || '';
+    _currentOrderStatus = {..._currentOrderStatus, erp_code: erp, pharmacy_id: pharmId};
+  } else if (key === 'shipped') {
+    const shipId = document.getElementById('editShipper')?.value || '';
+    const trackCode = document.getElementById('editTrackCode')?.value?.trim() || '';
+    _currentOrderStatus = {..._currentOrderStatus, shipping_provider_id: shipId, tracking_code: trackCode};
+  }
+  _editingStep = null;
+  await _persistOrderStatus();
+  renderTrackCurrentOrder();
+  await loadTrackOrders();
+  toast('Đã cập nhật thông tin bước', 'success');
 }
 
 async function jumpStatus(key) {
@@ -2965,7 +3240,9 @@ function lookupByPhone() {
           phone: f.receiverPhone || f.senderPhone || '',
           senderPhone: f.senderPhone || '',
           address: f.address || '',
+          oldAddress: f.oldAddress || '',
           orderId: o.id,
+          createdAt: o.createdAt || o.savedAt,
           savedAt: o.savedAt
         });
       }
@@ -2984,7 +3261,7 @@ function lookupByPhone() {
     <div onclick="fillFromHistory(${i})" style="cursor:pointer;padding:8px 10px;border-bottom:1px solid var(--border-light);font-size:12px;transition:background .12s" onmouseover="this.style.background='var(--surface-2)'" onmouseout="this.style.background=''">
       <div style="font-weight:700">${(c.name||'—').replace(/</g,'&lt;')}</div>
       <div style="font-size:11px;color:var(--text-3)">${c.phone} · ${(c.address||'—').slice(0,45).replace(/</g,'&lt;')}</div>
-      <div style="font-size:10px;color:var(--text-3)">${c.orderId} · ${c.savedAt?fmtDate(new Date(c.savedAt)):''}</div>
+      <div style="font-size:10px;color:var(--text-3)">${c.orderId} · ${(c.createdAt||c.savedAt)?fmtDate(new Date(c.createdAt||c.savedAt)):''}</div>
     </div>
   `).join('');
 }
@@ -2997,6 +3274,7 @@ function fillFromHistory(i) {
   set('receiverName', c.name);
   set('receiverPhone', c.phone);
   set('address', c.address);
+  _oldAddress = c.oldAddress || '';
   _hasUnsavedChanges = true;
   renderPreview();
   document.getElementById('phoneSearchResults').style.display = 'none';
@@ -3020,7 +3298,7 @@ function exportFilteredOrdersExcel() {
       'Tổng tiền': o.total || 0,
       'Trạng thái': s?.label || '',
       'Nhân viên': emp?.name || '',
-      'Ngày lưu': o.savedAt ? fmtDateTime(new Date(o.savedAt)) : ''
+      'Ngày tạo': (o.createdAt||o.savedAt) ? fmtDateTime(new Date(o.createdAt||o.savedAt)) : ''
     };
   });
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -3060,11 +3338,17 @@ function filterTrackOrders() {
   const creator  = document.getElementById('trackCreator')?.value||'';
   const status   = document.getElementById('trackStatus')?.value||'';
   let list = _trackOrders;
-  if (dateFrom) list = list.filter(o=>o.savedAt&&o.savedAt>=dateFrom);
-  if (dateTo)   list = list.filter(o=>o.savedAt&&o.savedAt.slice(0,10)<=dateTo);
+  if (dateFrom) list = list.filter(o=>{const d=o.createdAt||o.savedAt;return d&&d>=dateFrom;});
+  if (dateTo)   list = list.filter(o=>{const d=o.createdAt||o.savedAt;return d&&d.slice(0,10)<=dateTo;});
   if (kw)       list = list.filter(o=>{const f=o.form||{};return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw);});
   if (creator)  list = list.filter(o=>o.created_by===creator);
   if (status)   list = list.filter(o=>(o.status||'quoted')===status);
+  const sortBy = document.getElementById('trackSort')?.value || 'createdAt';
+  list = [...list].sort((a,b) => {
+    const da = sortBy==='savedAt' ? (a.savedAt||a.createdAt||'') : (a.createdAt||a.savedAt||'');
+    const db = sortBy==='savedAt' ? (b.savedAt||b.createdAt||'') : (b.createdAt||b.savedAt||'');
+    return db.localeCompare(da);
+  });
   window._trackOrdersFiltered = list;
   renderTrackList(list);
 }
@@ -3080,12 +3364,15 @@ function renderTrackList(list) {
     const f = o.form||{};
     const disp = (f.receiverName||o.name||o.id).replace(/</g,'&lt;');
     const isActive = o.id === orderId;
+    const emp = employees.find(e=>e.id===o.created_by);
+    const empShort = emp ? emp.name.trim().split(/\s+/).slice(-2).join(' ') : '';
+    const empTag = empShort ? `<span style="font-size:10px;color:var(--text-3);white-space:nowrap">${empShort.replace(/</g,'&lt;')}</span>` : '';
     return `<div class="track-order-item ${isActive?'trk-active':''}" onclick="loadTrackOrder(${i})">
       <div class="track-item-id">${o.id}</div>
       <div class="track-item-name">${disp}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
-        <span class="sbadge ${s.cls}">${s.icon} ${s.label}</span>
-        <span style="font-size:10px;color:var(--text-3)">${o.savedAt?fmtDateTime(new Date(o.savedAt)):''}</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:4px">${empTag}<span class="sbadge ${s.cls}">${s.icon} ${s.label}</span></div>
+        <span style="font-size:10px;color:var(--text-3)">${(o.createdAt||o.savedAt)?fmtDateTime(new Date(o.createdAt||o.savedAt)):''}</span>
       </div>
     </div>`;
   }).join('');
@@ -3095,6 +3382,9 @@ function loadTrackOrder(i) {
   const list = window._trackOrdersFiltered;
   const o = list[i];
   if (!o) return;
+  if (_hasUnsavedChanges && o.id !== orderId) {
+    if (!confirm('Có đơn báo giá mới chưa được lưu. Thông tin sẽ mất nếu mở đơn cũ — tiếp tục?')) return;
+  }
   _applyOrderToForm(o);
   renderTrackList(list);
   toast('Đã tải: '+(o.form?.receiverName||o.name||o.id),'success');
@@ -3327,6 +3617,26 @@ function switchTab(tab){
   const dto   = document.getElementById('trackDateTo');
   if (dfrom && !dfrom.value) dfrom.value = todayISO;
   if (dto   && !dto.value)   dto.value   = todayISO;
+  // Nhận danh sách đặt hàng từ Tra cứu tồn kho (qua localStorage)
+  try {
+    const _req = localStorage.getItem('tsp_order_request');
+    if (_req) {
+      const items = JSON.parse(_req);
+      if (Array.isArray(items) && items.length) {
+        items.forEach(it => {
+          const sku  = String(it.maHang||'').trim();
+          const name = String(it.tenHang||sku||'Sản phẩm').trim();
+          const qty  = Math.max(1, parseInt(it.needQty)||1);
+          const unit = String(it.dvt||'Sp').trim();
+          cart.push({ sku, name, price:0, qty, unit, img:'', _rawImg:'', promo:false });
+        });
+        localStorage.removeItem('tsp_order_request');
+        _hasUnsavedChanges = true;
+        renderPreview();
+        toast(`Đã nhập ${items.length} SP từ Tra cứu tồn kho — điền giá trước khi lưu`, 'info');
+      }
+    }
+  } catch {}
   renderPreview();
   await checkConn();
   await loadEmployees();
