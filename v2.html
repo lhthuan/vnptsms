@@ -1314,7 +1314,19 @@ CREATE POLICY "anon_all" ON shipping_providers FOR ALL TO anon USING (true) WITH
     </div>
     <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div>
-        <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:10px">🏪 Nhà thuốc</div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px">🏪 Nhà thuốc</div>
+        <!-- Import hàng loạt -->
+        <div style="display:flex;gap:5px;margin-bottom:8px">
+          <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;font-size:11px" onclick="downloadPharmTemplate()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Tải mẫu Excel
+          </button>
+          <button class="btn btn-blue btn-sm" style="flex:1;justify-content:center;font-size:11px" onclick="document.getElementById('pharmImportFile').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import Excel
+          </button>
+          <input type="file" id="pharmImportFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="importPharmacies(this.files[0]);this.value=''">
+        </div>
         <div class="form-grid" style="gap:6px;margin-bottom:8px">
           <input type="hidden" id="pharmEditId">
           <input type="text" id="pharmName" placeholder="Tên nhà thuốc *" style="font-size:12.5px">
@@ -1326,7 +1338,7 @@ CREATE POLICY "anon_all" ON shipping_providers FOR ALL TO anon USING (true) WITH
           </button>
           <button class="btn btn-outline btn-sm" id="pharmCancelBtn" style="display:none;justify-content:center" onclick="cancelPharmEdit()">Huỷ</button>
         </div>
-        <div id="pharmList" style="display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto">
+        <div id="pharmList" style="display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto">
           <div class="empty-saved">Chưa có nhà thuốc</div>
         </div>
       </div>
@@ -2813,6 +2825,63 @@ function openConfigModal() {
   document.getElementById('configModal').classList.add('open');
 }
 function closeConfigModal() { document.getElementById('configModal').classList.remove('open'); }
+
+function downloadPharmTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Tên nhà thuốc', 'Mã nhà thuốc', 'Số điện thoại'],
+    ['Nhà thuốc Trung Sơn - Q1', 'NT001', '0281234567'],
+    ['Nhà thuốc Trung Sơn - Q7', 'NT002', '0287654321'],
+  ]);
+  ws['!cols'] = [{wch:35},{wch:16},{wch:16}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Nhà thuốc');
+  XLSX.writeFile(wb, 'mau-danh-sach-nha-thuoc.xlsx');
+  toast('Đã tải mẫu file nhà thuốc', 'success');
+}
+
+async function importPharmacies(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = async e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { defval:'' });
+      if (!rows.length) { toast('File trống', 'error'); return; }
+
+      const headers = Object.keys(rows[0]).map(h => h.toLowerCase().trim());
+      const findCol = (...aliases) => Object.keys(rows[0]).find(h => aliases.some(a => h.toLowerCase().trim().includes(a))) || null;
+      const colName  = findCol('tên','name');
+      const colCode  = findCol('mã','code');
+      const colPhone = findCol('điện thoại','phone','sđt');
+
+      if (!colName) { toast('Không tìm thấy cột Tên nhà thuốc', 'error'); return; }
+
+      const items = rows.map(r => ({
+        name:  String(r[colName]||'').trim(),
+        code:  colCode  ? String(r[colCode]||'').trim()  : '',
+        phone: colPhone ? String(r[colPhone]||'').trim() : ''
+      })).filter(r => r.name);
+
+      if (!items.length) { toast('Không có dòng dữ liệu hợp lệ', 'error'); return; }
+
+      const sb = getSb();
+      let added = 0;
+      if (sb) {
+        const { error } = await sb.from('pharmacies').insert(items);
+        if (error) { toast('Lỗi import: ' + error.message, 'error'); return; }
+        added = items.length;
+      } else {
+        items.forEach(r => { pharmacies.push({id:'local-'+Date.now()+Math.random(),...r}); });
+        added = items.length;
+      }
+      await loadPharmacies();
+      renderPharmList();
+      toast(`✅ Đã import ${added} nhà thuốc`, 'success');
+    } catch(err) { toast('Lỗi đọc file: ' + err.message, 'error'); }
+  };
+  reader.readAsArrayBuffer(file);
+}
 
 function renderPharmList() {
   const el = document.getElementById('pharmList');
