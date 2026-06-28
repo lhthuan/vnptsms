@@ -56,8 +56,8 @@ function getSb() {
 }
 
 // ─── OFFLINE INDEX (IndexedDB cache of Supabase data) ────────────────────────
-// v2: bỏ ma_hang index (không cần vì dùng getAll), tăng tốc ghi 510k dòng
-const CACHE_DB = "InvCacheDB", CACHE_VER = 2, CACHE_ST = "stock";
+// v3: bỏ dedup trong cacheWrite — lưu toàn bộ 510k rows, sum khi query
+const CACHE_DB = "InvCacheDB", CACHE_VER = 3, CACHE_ST = "stock";
 const LS_SB_UPDATED = "inv_sb_updated_at"; // timestamp data trên Supabase
 const LS_CACHE_TS   = "inv_cache_ts";       // set when IndexedDB is synced
 
@@ -78,26 +78,16 @@ function cacheOpen() {
 }
 
 async function cacheWrite(rows) {
-  // Dedup theo (ma_hang, chi_nhanh, ma_kho) — cộng dồn cuoi_ky nếu trùng
-  const dedupMap = new Map();
-  for (const r of rows) {
-    const key = `${r.ma_hang}||${r.chi_nhanh}||${r.ma_kho}`;
-    if (dedupMap.has(key)) {
-      dedupMap.get(key).cuoi_ky += r.cuoi_ky;
-    } else {
-      dedupMap.set(key, { ...r });
-    }
-  }
-  const deduped = [...dedupMap.values()];
-
+  // Không dedup — lưu toàn bộ rows từ Supabase
+  // doSearch và doCoverage đã tự sum khi hiển thị kết quả
   const db = await cacheOpen();
   const BATCH = 20000;
-  for (let i = 0; i < deduped.length; i += BATCH) {
+  for (let i = 0; i < rows.length; i += BATCH) {
     await new Promise((res, rej) => {
       const tx = db.transaction(CACHE_ST, "readwrite");
       const st = tx.objectStore(CACHE_ST);
       if (i === 0) st.clear();
-      deduped.slice(i, i + BATCH).forEach(r => st.add(r));
+      rows.slice(i, i + BATCH).forEach(r => st.add(r));
       tx.oncomplete = res; tx.onerror = () => rej(tx.error);
     });
   }
@@ -685,10 +675,13 @@ export default function App() {
       const req = localStorage.getItem("tsp_inv_lookup_request");
       if (req) { localStorage.removeItem("tsp_inv_lookup_request"); try { _applyRequest(JSON.parse(req)); } catch {} }
     };
+    // 3 cơ chế để nhận SKU từ v2.html: storage event, visibilitychange, window focus
     const onStorage = (e) => { if (e.key === "tsp_inv_lookup_request" && e.newValue) readRequest(); };
     const onVisible = () => { if (document.visibilityState === "visible") readRequest(); };
+    const onFocus = () => readRequest();
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onFocus);
 
     // Load IndexedDB ngay lập tức (không chờ Supabase check) → UI hiện nhanh
     _loadFromCache().then(() => {
@@ -707,6 +700,7 @@ export default function App() {
     return () => {
       window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onFocus);
     };
   }, [_loadFromCache, _applyRequest]);
 
