@@ -1,0 +1,23 @@
+{
+  "name": "inventory-app",
+  "version": "0.1.0",
+  "homepage": "https://lhthuan.github.io/inventory-lookup/",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.108.2",
+    "@vitejs/plugin-react": "^5.1.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "vite": "^7.3.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "gh-pages": "^6.1.0"
+  }
+}
