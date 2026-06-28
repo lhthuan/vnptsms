@@ -2261,9 +2261,6 @@ function _openInvTab(payload) {
   const base = window.location.href.replace(/\/[^/]*$/, '/');
   const url = base + 'inventory-lookup/';
   if (payload) {
-    // BroadcastChannel: gửi thẳng đến tab đang mở (không cần reload)
-    try { const bc = new BroadcastChannel('tsp_inv_lookup'); bc.postMessage(payload); bc.close(); } catch {}
-    // localStorage: fallback cho tab mới mở lần đầu
     localStorage.setItem('tsp_inv_lookup_request', JSON.stringify(payload));
   }
   window.open(url, 'inv_lookup');

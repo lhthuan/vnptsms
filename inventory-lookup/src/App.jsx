@@ -693,30 +693,21 @@ export default function App() {
 
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
-    // Đọc request từ v2.html (lần mở đầu)
-    try {
-      const req = localStorage.getItem("tsp_inv_lookup_request");
-      if (req) {
-        localStorage.removeItem("tsp_inv_lookup_request");
-        _applyRequest(JSON.parse(req));
-      }
-    } catch {}
 
-    // Lắng nghe request từ v2.html: storage event (tab khác ghi LS) + visibilitychange fallback
+    // Đọc SKU từ localStorage: cơ chế duy nhất, đơn giản, đáng tin
     const readRequest = () => {
-      const req = localStorage.getItem("tsp_inv_lookup_request");
-      if (req) { localStorage.removeItem("tsp_inv_lookup_request"); try { _applyRequest(JSON.parse(req)); } catch {} }
+      try {
+        const raw = localStorage.getItem("tsp_inv_lookup_request");
+        if (!raw) return;
+        localStorage.removeItem("tsp_inv_lookup_request");
+        _applyRequest(JSON.parse(raw));
+      } catch {}
     };
-    // BroadcastChannel: nhận message trực tiếp từ v2.html khi tab đang mở
-    let bc = null;
-    try {
-      bc = new BroadcastChannel("tsp_inv_lookup");
-      bc.onmessage = (e) => { if (e.data) try { _applyRequest(e.data); } catch {} };
-    } catch {}
-    // Fallback: storage + visibilitychange cho tab mới mở
-    const onStorage = (e) => { if (e.key === "tsp_inv_lookup_request" && e.newValue) readRequest(); };
+
+    readRequest(); // đọc ngay khi tab mới mở
+
+    // Đọc lại khi tab được active (window.open từ v2.html focus tab này)
     const onVisible = () => { if (document.visibilityState === "visible") readRequest(); };
-    window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
 
     // Load IndexedDB ngay lập tức (không chờ Supabase check) → UI hiện nhanh
@@ -734,8 +725,6 @@ export default function App() {
         .catch(() => { _syncProgressCb = null; _savingCb = null; setSyncState("error"); });
     });
     return () => {
-      if (bc) bc.close();
-      window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [_loadFromCache, _applyRequest]);
