@@ -2233,7 +2233,7 @@ async function showSKUResult(d) {
   const rows = await invLookupSku(d.sku);
   if (!rows.length) {
     invEl.innerHTML = `<div class="sku-inv-wrap">
-      <div class="sku-inv-title">📦 Tồn kho theo chi nhánh <a class="sku-inv-link" onclick="openInvLookupTab()">Mở Tra cứu tồn kho ↗</a></div>
+      <div class="sku-inv-title">📦 Tồn kho theo chi nhánh <a class="sku-inv-link" onclick="openInvLookupWithSku('${d.sku}','${(d.name||d.sku).replace(/'/g,"\\'")}','${unit}')">Mở Tra cứu tồn kho ↗</a></div>
       <div class="sku-inv-nodata">Chưa có dữ liệu — import file Excel trong Tra cứu tồn kho để hiển thị</div>
     </div>`;
     return;
@@ -2248,7 +2248,7 @@ async function showSKUResult(d) {
   </tr>`).join('');
   const moreRow = moreCount > 0 ? `<tr><td colspan="3" style="text-align:center;font-size:10px;color:var(--text-3)">+${moreCount} chi nhánh khác</td></tr>` : '';
   invEl.innerHTML = `<div class="sku-inv-wrap">
-    <div class="sku-inv-title">📦 Tồn kho (${rows.length} CN) <a class="sku-inv-link" onclick="openInvLookupTab()">Tra cứu chi tiết ↗</a></div>
+    <div class="sku-inv-title">📦 Tồn kho (${rows.length} CN) <a class="sku-inv-link" onclick="openInvLookupWithSku('${d.sku}','${(d.name||d.sku).replace(/'/g,"\\'")}','${unit}')">Tra cứu chi tiết ↗</a></div>
     <table class="sku-inv-table">
       <thead><tr><th>Chi nhánh</th><th>Tỉnh</th><th style="text-align:right">Tồn cuối kỳ</th></tr></thead>
       <tbody>${trs}${moreRow}</tbody>
@@ -2258,6 +2258,14 @@ async function showSKUResult(d) {
 }
 
 function openInvLookupTab() {
+  const base = window.location.href.replace(/\/[^/]*$/, '/');
+  window.open(base + 'inventory-lookup/', '_blank');
+}
+
+function openInvLookupWithSku(sku, tenHang, dvt) {
+  if (!sku) return;
+  const payload = [{ maHang: sku, tenHang: tenHang || sku, dvt: dvt || '', needQty: 1 }];
+  localStorage.setItem('tsp_inv_lookup_request', JSON.stringify(payload));
   const base = window.location.href.replace(/\/[^/]*$/, '/');
   window.open(base + 'inventory-lookup/', '_blank');
 }

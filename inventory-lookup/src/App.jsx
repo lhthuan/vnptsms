@@ -659,15 +659,19 @@ export default function App() {
         }
       }
     } catch {}
-    _syncProgressCb = (n) => setSyncCount(n);
-    setSyncState("syncing"); setSyncCount(0);
-    syncCacheIfNeeded()
-      .then(async (synced) => {
-        _syncProgressCb = null;
-        setSyncState(synced ? "done" : "idle");
-        await _loadFromCache();
-      })
-      .catch(() => { _syncProgressCb = null; setSyncState("error"); });
+    // Load IndexedDB ngay lập tức (không chờ Supabase check) → UI hiện nhanh
+    _loadFromCache().then(() => {
+      // Sau khi UI có dữ liệu, check Supabase staleness ở nền
+      _syncProgressCb = (n) => setSyncCount(n);
+      setSyncState("syncing");
+      syncCacheIfNeeded()
+        .then(async (synced) => {
+          _syncProgressCb = null;
+          if (synced) { await _loadFromCache(); setSyncState("done"); }
+          else setSyncState("idle");
+        })
+        .catch(() => { _syncProgressCb = null; setSyncState("error"); });
+    });
   }, [_loadFromCache]);
 
   // Auto-search cả 2 tab sau khi activeRows load xong (từ cross-app request)
