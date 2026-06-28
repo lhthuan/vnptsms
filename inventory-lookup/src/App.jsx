@@ -614,9 +614,11 @@ export default function App() {
   const [dataTs, setDataTs]       = useState(() => localStorage.getItem(LS_SB_UPDATED));
   const [provinces, setProvinces] = useState([]);
   const [branches,  setBranches]  = useState([]);
-  const [pendingSearch, setPendingSearch] = useState(null); // items từ v2.html chờ search
+  const [pendingSearch, setPendingSearch] = useState(null);
+  const activeRowsRef = useRef([]); // ref để _applyRequest đọc activeRows mà không cần effect
 
   const _applyRows = useCallback((rows) => {
+    activeRowsRef.current = rows;
     setActiveRows(rows);
     setProvinces([...new Set(rows.map(r=>r.tinhThanh).filter(Boolean))].sort());
     setBranches([...new Set(rows.map(r=>r.chiNhanh).filter(Boolean))].sort((a,b)=>
@@ -656,8 +658,13 @@ export default function App() {
     setLookupItems(mapped);
     setCoverItems(mapped);
     setTab("lookup");
-    setPendingSearch(mapped); // trigger auto-search kể cả khi activeRows đã có
-  }, []);
+    // Nếu data đã load: chạy search ngay qua ref (không qua state/effect)
+    if (activeRowsRef.current.length > 0) {
+      _runAutoSearch(mapped, activeRowsRef.current);
+    } else {
+      setPendingSearch(mapped); // chờ cache load xong
+    }
+  }, [_runAutoSearch]);
 
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
