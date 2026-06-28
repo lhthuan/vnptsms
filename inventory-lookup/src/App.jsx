@@ -675,13 +675,17 @@ export default function App() {
       const req = localStorage.getItem("tsp_inv_lookup_request");
       if (req) { localStorage.removeItem("tsp_inv_lookup_request"); try { _applyRequest(JSON.parse(req)); } catch {} }
     };
-    // 3 cơ chế để nhận SKU từ v2.html: storage event, visibilitychange, window focus
+    // BroadcastChannel: nhận message trực tiếp từ v2.html khi tab đang mở
+    let bc = null;
+    try {
+      bc = new BroadcastChannel("tsp_inv_lookup");
+      bc.onmessage = (e) => { if (e.data) try { _applyRequest(e.data); } catch {} };
+    } catch {}
+    // Fallback: storage + visibilitychange cho tab mới mở
     const onStorage = (e) => { if (e.key === "tsp_inv_lookup_request" && e.newValue) readRequest(); };
     const onVisible = () => { if (document.visibilityState === "visible") readRequest(); };
-    const onFocus = () => readRequest();
     window.addEventListener("storage", onStorage);
     document.addEventListener("visibilitychange", onVisible);
-    window.addEventListener("focus", onFocus);
 
     // Load IndexedDB ngay lập tức (không chờ Supabase check) → UI hiện nhanh
     _loadFromCache().then(() => {
@@ -698,9 +702,9 @@ export default function App() {
         .catch(() => { _syncProgressCb = null; _savingCb = null; setSyncState("error"); });
     });
     return () => {
+      if (bc) bc.close();
       window.removeEventListener("storage", onStorage);
       document.removeEventListener("visibilitychange", onVisible);
-      window.removeEventListener("focus", onFocus);
     };
   }, [_loadFromCache, _applyRequest]);
 
