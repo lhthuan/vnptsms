@@ -646,6 +646,32 @@ export default function App() {
       .catch(() => { _syncProgressCb = null; setSyncState("error"); });
   }, [_loadFromCache]);
 
+  const _runAutoSearch = useCallback((items, rows) => {
+    // Tab 1: Tra cứu mã hàng
+    const map = {};
+    items.forEach(it => {
+      map[it.maHang] = { rows: rows.filter(r=>r.maHang.toUpperCase()===it.maHang), needQty:it.needQty, tenHang:it.tenHang, dvt:it.dvt };
+    });
+    setResults({ items, map });
+    // Tab 2: Kiểm tra chi nhánh
+    const thresholds = {};
+    items.forEach(it => { thresholds[it.maHang] = it.needQty===''?0:Number(it.needQty); });
+    const codes = items.map(it=>it.maHang);
+    const branchMap = {};
+    rows.forEach(r => {
+      const key = r.chiNhanh+"||"+r.tinhThanh;
+      if (!branchMap[key]) branchMap[key]={ chiNhanh:r.chiNhanh, tinhThanh:r.tinhThanh, qtyMap:{} };
+      const code = r.maHang.toUpperCase();
+      if (codes.includes(code)) branchMap[key].qtyMap[code]=(branchMap[key].qtyMap[code]||0)+parseQty(r.cuoiKy);
+    });
+    const covRows = Object.values(branchMap).map(b => {
+      const codeStatus = codes.map(c=>({ code:c, qty:b.qtyMap[c]||0, needed:thresholds[c]||0, ok:(b.qtyMap[c]||0)>=(thresholds[c]||0), info:items.find(it=>it.maHang===c) }));
+      const count = codeStatus.filter(cs=>cs.ok).length;
+      return { ...b, codeStatus, count, hasAll:count===codes.length };
+    }).sort((a,b)=>b.count-a.count||a.chiNhanh.localeCompare(b.chiNhanh));
+    setCoverageResults({ codes, rows:covRows, items });
+  }, []);
+
   const _applyRequest = useCallback((raw) => {
     if (!Array.isArray(raw) || !raw.length) return;
     const mapped = raw.map(it => ({
@@ -658,11 +684,10 @@ export default function App() {
     setLookupItems(mapped);
     setCoverItems(mapped);
     setTab("lookup");
-    // Nếu data đã load: chạy search ngay qua ref (không qua state/effect)
     if (activeRowsRef.current.length > 0) {
       _runAutoSearch(mapped, activeRowsRef.current);
     } else {
-      setPendingSearch(mapped); // chờ cache load xong
+      setPendingSearch(mapped);
     }
   }, [_runAutoSearch]);
 
@@ -714,32 +739,6 @@ export default function App() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [_loadFromCache, _applyRequest]);
-
-  const _runAutoSearch = useCallback((items, rows) => {
-    // Tab 1: Tra cứu mã hàng
-    const map = {};
-    items.forEach(it => {
-      map[it.maHang] = { rows: rows.filter(r=>r.maHang.toUpperCase()===it.maHang), needQty:it.needQty, tenHang:it.tenHang, dvt:it.dvt };
-    });
-    setResults({ items, map });
-    // Tab 2: Kiểm tra chi nhánh
-    const thresholds = {};
-    items.forEach(it => { thresholds[it.maHang] = it.needQty===''?0:Number(it.needQty); });
-    const codes = items.map(it=>it.maHang);
-    const branchMap = {};
-    rows.forEach(r => {
-      const key = r.chiNhanh+"||"+r.tinhThanh;
-      if (!branchMap[key]) branchMap[key]={ chiNhanh:r.chiNhanh, tinhThanh:r.tinhThanh, qtyMap:{} };
-      const code = r.maHang.toUpperCase();
-      if (codes.includes(code)) branchMap[key].qtyMap[code]=(branchMap[key].qtyMap[code]||0)+parseQty(r.cuoiKy);
-    });
-    const covRows = Object.values(branchMap).map(b => {
-      const codeStatus = codes.map(c=>({ code:c, qty:b.qtyMap[c]||0, needed:thresholds[c]||0, ok:(b.qtyMap[c]||0)>=(thresholds[c]||0), info:items.find(it=>it.maHang===c) }));
-      const count = codeStatus.filter(cs=>cs.ok).length;
-      return { ...b, codeStatus, count, hasAll:count===codes.length };
-    }).sort((a,b)=>b.count-a.count||a.chiNhanh.localeCompare(b.chiNhanh));
-    setCoverageResults({ codes, rows:covRows, items });
-  }, []);
 
   // Auto-search khi activeRows vừa load xong (tab mới mở)
   useEffect(() => {
