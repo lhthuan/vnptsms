@@ -828,7 +828,7 @@ export default function App() {
     reader.readAsArrayBuffer(file);
   }, []);
 
-  const branchFileRef = React.useRef();
+  const branchFileRef = useRef();
   const [branchUploading, setBranchUploading] = useState(false);
   const [branchCount, setBranchCount] = useState(() => Object.keys(_branchMap).length);
 
