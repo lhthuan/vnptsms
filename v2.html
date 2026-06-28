@@ -518,9 +518,9 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
             Dán & phân tích thông tin khách
           </span>
-          <svg id="addrParserChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--text-3);transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+          <svg id="addrParserChevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;color:var(--text-3);transition:transform .2s;transform:rotate(180deg)"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div id="addrParserSection" style="display:none;margin-top:10px">
+        <div id="addrParserSection" style="display:block;margin-top:10px">
           <textarea id="customerRaw" placeholder="Dán toàn bộ thông tin khách: Tên — SĐT — Địa chỉ&#10;VD: Nguyễn Văn A - 0901234567 - 123 Lê Lợi, Q1, TP.HCM" style="min-height:72px;font-size:12.5px"></textarea>
           <button class="btn btn-blue btn-sm" onclick="parseAndFill()" style="margin-top:7px;width:100%;justify-content:center">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -566,7 +566,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
           <div class="form-grid g2">
             <div class="field">
               <div class="field-label">Người đặt</div>
-              <input type="text" id="senderName" placeholder="Họ tên" oninput="renderPreview()">
+              <input type="text" id="senderName" placeholder="Họ tên" oninput="renderPreview()" onblur="this.value=toProperCase(this.value);renderPreview()">
             </div>
             <div class="field">
               <div class="field-label">SĐT người đặt</div>
@@ -582,7 +582,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
                   Copy từ người đặt
                 </button>
               </div>
-              <input type="text" id="receiverName" placeholder="Họ tên" oninput="renderPreview()">
+              <input type="text" id="receiverName" placeholder="Họ tên" oninput="renderPreview()" onblur="this.value=toProperCase(this.value);renderPreview()">
             </div>
             <div class="field">
               <div class="field-label">SĐT người nhận</div>
@@ -1654,6 +1654,28 @@ async function parseAndFill() {
   document.getElementById('parsedAddrOrig').textContent = address || '(không tìm thấy)';
   document.getElementById('addrParseResult').classList.add('show');
 
+  // Auto-fill name & phone immediately
+  if (name) {
+    document.getElementById('senderName').value   = name;
+    document.getElementById('receiverName').value = name;
+  }
+  if (phone) {
+    const sp = document.getElementById('senderPhone');
+    const rp = document.getElementById('receiverPhone');
+    sp.value = phone; rp.value = phone;
+    const bc = phoneInvalid ? 'var(--red)' : '';
+    sp.style.borderColor = bc; rp.style.borderColor = bc;
+  }
+
+  // Auto-fill original address first while waiting for map
+  if (address) {
+    document.getElementById('address').value = address;
+    _oldAddress = '';
+  }
+  renderPreview();
+  toast(phoneInvalid ? 'Đã điền — kiểm tra lại số điện thoại!' : 'Đã điền thông tin khách', phoneInvalid ? 'error' : 'success');
+
+  // Fetch map suggestion and auto-apply
   const sugEl = document.getElementById('addrSuggestions');
   const { trackasiaKey } = getConfig();
   if (address) {
@@ -1661,6 +1683,13 @@ async function parseAndFill() {
     const res = await fetchAddressConverted(address, trackasiaKey || TRACKASIA_KEY);
     if (res.ok) {
       sugEl.innerHTML = `<div class="addr-suggestion-item" onclick="useAddr('${encodeURIComponent(res.result)}')">${res.result.replace(/</g,'&lt;')}</div>`;
+      // Auto-apply map suggestion to address field
+      document.getElementById('address').value = res.result;
+      _oldAddress = '';
+      renderPreview();
+      // Auto-fetch old address reference
+      const old = await fetchOldAddress(res.result, trackasiaKey || TRACKASIA_KEY);
+      if (old) { _oldAddress = old; renderPreview(); }
     } else if (res.err === 'key_invalid') {
       sugEl.innerHTML = '<span style="font-size:11.5px;color:var(--red)">⚠ API key không hợp lệ — kiểm tra lại trong Cài đặt</span>';
     } else if (res.err === 'timeout') {
@@ -2037,7 +2066,7 @@ function newOrder(){
   document.getElementById('discountVoucher').value=0;
   document.getElementById('shipFee').value=0;
   document.getElementById('carePointPay').value=0;
-  selectedNotice=0;
+  selectedNotice=0; _oldAddress='';
   NOTICES.forEach((_,i)=>{ const p=document.getElementById('noticePill'+i); if(p) p.classList.toggle('active',i===0); });
   document.getElementById('skuResult').classList.remove('show');
   document.getElementById('jsonFallback').classList.remove('show');
@@ -2062,7 +2091,7 @@ function getSnapshot(){
     form:{
       senderName:v('senderName'),senderPhone:v('senderPhone'),
       receiverName:v('receiverName'),receiverPhone:v('receiverPhone'),
-      address:v('address'),deliveryDate:v('deliveryDate'),
+      address:v('address'),oldAddress:_oldAddress,deliveryDate:v('deliveryDate'),
       paymentMethod:v('paymentMethod'),
       discountDirect:dd,discountVoucher:dv,shipFee:sf,
       carePointPay:parseFloat(v('carePointPay'))||0,
@@ -2149,7 +2178,7 @@ function loadOrder(idx){
   const set=(id,v)=>{const el=document.getElementById(id);if(el)el.value=v||'';};
   set('senderName',f.senderName);set('senderPhone',f.senderPhone);
   set('receiverName',f.receiverName);set('receiverPhone',f.receiverPhone);
-  set('address',f.address);set('deliveryDate',f.deliveryDate);
+  set('address',f.address);_oldAddress=f.oldAddress||'';set('deliveryDate',f.deliveryDate);
   document.getElementById('paymentMethod').value=f.paymentMethod||'Tiền mặt';
   set('discountDirect',f.discountDirect||0);set('discountVoucher',f.discountVoucher||0);
   set('shipFee',f.shipFee||0);set('carePointPay',f.carePointPay||0);
