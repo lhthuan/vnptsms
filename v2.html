@@ -59,7 +59,7 @@ body{font-family:var(--font);background:var(--surface-2);color:var(--text);font-
 .btn:disabled{opacity:.45;cursor:not-allowed}
 
 /* ══ LAYOUT ══ */
-.app{display:grid;grid-template-columns:370px 1fr;height:calc(100vh - 52px);overflow:hidden}
+.app{display:grid;grid-template-columns:370px 1fr 300px;height:calc(100vh - 52px);overflow:hidden}
 
 /* ══ LEFT PANEL ══ */
 .panel-left{background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
@@ -297,7 +297,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
   .mob-tab{flex:1;padding:11px 6px;text-align:center;font-size:12px;font-weight:700;color:var(--text-3);cursor:pointer;transition:all .15s;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;justify-content:center;gap:5px;user-select:none}
   .mob-tab svg{width:14px;height:14px;flex-shrink:0}
   .mob-tab.active{color:var(--green);border-bottom-color:var(--green)}
-  .panel-left,.panel-right{width:100%;border-right:none;flex:1;overflow:hidden;display:none;flex-direction:column}
+  .panel-left,.panel-right,.panel-track{width:100%;border-right:none;flex:1;overflow:hidden;display:none;flex-direction:column}
   .panel-left.mob-active,.panel-right.mob-active{display:flex}
   .pr-toolbar{display:none}
   .pr-scroll{padding:12px}
@@ -349,7 +349,7 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 @media(min-width:769px){
   .mob-tabs{display:none}
   .mob-bottom-bar{display:none}
-  .panel-left,.panel-right{display:flex!important}
+  .panel-left,.panel-right,.panel-track{display:flex!important}
 }
 
 /* ══ V2 NEW CSS ══ */
@@ -427,6 +427,58 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
 .sku-drop-sku{font-family:var(--mono);font-size:10.5px;color:var(--text-3);flex-shrink:0;min-width:64px}
 .sku-drop-name{font-size:12.5px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sku-drop-price{font-size:11.5px;color:var(--green-mid);font-family:var(--mono);flex-shrink:0;white-space:nowrap}
+
+/* ══ TRACK PANEL ══ */
+.panel-track{background:#fff;border-left:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.track-scroll{overflow-y:auto;flex:1}
+.track-scroll::-webkit-scrollbar{width:4px}
+.track-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.track-header{background:var(--surface-2);padding:10px 14px;border-bottom:1px solid var(--border);font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.9px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.track-section{padding:12px 12px;border-bottom:1px solid var(--border-light)}
+.track-section:last-child{border-bottom:none}
+
+/* Status stepper */
+.status-steps{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+.status-step{display:flex;align-items:flex-start;gap:8px;padding:6px 8px;border-radius:var(--r-sm);cursor:pointer;transition:background .12s;border:1.5px solid transparent}
+.status-step:hover{background:var(--surface-2)}
+.status-step.s-done{opacity:.8}
+.status-step.s-current{border-color:var(--orange);background:var(--orange-xlight)}
+.step-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700;margin-top:1px}
+.step-dot.d-done{background:var(--green);color:#fff}
+.step-dot.d-current{background:var(--orange);color:#fff}
+.step-dot.d-pending{background:var(--surface-3);color:var(--text-3);border:2px solid var(--border)}
+.step-label{font-size:11.5px;font-weight:600;color:var(--text);line-height:1.35}
+.step-label.l-done{color:var(--green)}
+.step-label.l-current{color:var(--orange);font-weight:700}
+.step-label.l-pending{color:var(--text-3);font-weight:500}
+.step-sub{font-size:10px;color:var(--text-3);margin-top:1px;line-height:1.3}
+.step-extra-form{margin-top:6px;display:flex;flex-direction:column;gap:5px}
+.step-extra-form input,.step-extra-form select{font-size:12px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font);color:var(--text);background:#fff;outline:none;width:100%}
+.step-extra-form input:focus,.step-extra-form select:focus{border-color:var(--green-mid)}
+
+/* Track filter inputs */
+.track-filter-row{display:flex;gap:5px;margin-bottom:5px}
+.track-filter-row input[type=date],.track-filter-row select{font-size:11.5px;padding:5px 7px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font);color:var(--text);background:#fff;outline:none;min-width:0;flex:1;width:50%}
+.track-search{font-size:11.5px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font);color:var(--text);background:#fff;outline:none;width:100%;margin-bottom:5px}
+.track-search:focus,.track-filter-row input:focus,.track-filter-row select:focus{border-color:var(--green-mid)}
+
+/* Track order list */
+.track-order-list{display:flex;flex-direction:column;gap:4px}
+.track-order-item{padding:7px 9px;border:1.5px solid var(--border-light);border-radius:var(--r-sm);cursor:pointer;transition:all .12s}
+.track-order-item:hover{border-color:var(--green-mid);background:var(--green-xlight)}
+.track-order-item.trk-active{border-color:var(--orange)!important;background:var(--orange-xlight)!important}
+.track-item-id{font-family:var(--mono);font-size:10px;color:var(--text-3);margin-bottom:1px}
+.track-item-name{font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:3px}
+
+/* Status badge */
+.sbadge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.sb-quoted{background:var(--blue-light);color:var(--blue)}
+.sb-confirmed{background:var(--green-light);color:var(--green)}
+.sb-erp{background:var(--amber-light);color:var(--amber)}
+.sb-pharmacy{background:#f0e6ff;color:#7c3aed}
+.sb-shipped{background:var(--orange-light);color:var(--orange)}
+.sb-delivered{background:var(--green-light);color:var(--green-dark)}
+.sb-reconciled{background:var(--surface-3);color:var(--text-2)}
 </style>
 </head>
 <body>
@@ -1006,6 +1058,53 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
     </div>
   </div>
 
+  <!-- TRACK PANEL -->
+  <div class="panel-track" id="panelTrack">
+    <div class="track-header">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Theo dõi đơn hàng
+      <button onclick="openConfigModal()" title="Cấu hình nhà thuốc & vận chuyển" style="margin-left:auto;background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:2px 5px;border-radius:4px;transition:.15s" onmouseover="this.style.background='var(--surface-3)'" onmouseout="this.style.background='none'">⚙</button>
+    </div>
+    <div class="track-scroll">
+      <!-- Current order status -->
+      <div class="track-section" id="trackCurrentOrder">
+        <div style="color:var(--text-3);font-size:12px;text-align:center;padding:10px 0">Chưa tải đơn nào</div>
+      </div>
+      <!-- Filters + list -->
+      <div class="track-section">
+        <div style="font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Tất cả đơn hàng</div>
+        <div class="track-filter-row">
+          <input type="date" id="trackDateFrom" oninput="filterTrackOrders()" title="Từ ngày">
+          <input type="date" id="trackDateTo" oninput="filterTrackOrders()" title="Đến ngày">
+        </div>
+        <input class="track-search" type="text" id="trackSearch" placeholder="Tên, SĐT, mã đơn..." oninput="filterTrackOrders()">
+        <div class="track-filter-row">
+          <select id="trackCreator" onchange="filterTrackOrders()"><option value="">Tất cả NV</option></select>
+          <select id="trackStatus" onchange="filterTrackOrders()">
+            <option value="">Tất cả TT</option>
+            <option value="quoted">Đã báo giá</option>
+            <option value="confirmed">Chốt đơn</option>
+            <option value="erp_sent">Chuyển ERP</option>
+            <option value="pharmacy_sent">Đến NT</option>
+            <option value="shipped">Lên vận đơn</option>
+            <option value="delivered">Giao hàng</option>
+            <option value="reconciled">Đối soát</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:7px 0 6px">
+          <span style="font-size:11px;color:var(--text-3)"><span id="trackListCount">0</span> đơn</span>
+          <button class="btn btn-green btn-sm" onclick="exportOrdersExcel()" style="font-size:11px;padding:4px 9px;gap:4px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Excel
+          </button>
+        </div>
+        <div class="track-order-list" id="trackOrderList">
+          <div style="text-align:center;padding:14px;color:var(--text-3);font-size:12px">Đang tải...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Floating action buttons -->
@@ -1050,37 +1149,56 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
         </div>
         <div>
           <div style="font-size:11.5px;font-weight:700;color:var(--text-2);margin-bottom:6px">SQL Schema — chạy 1 lần trong Supabase SQL Editor:</div>
-          <pre class="sql-block">CREATE TABLE IF NOT EXISTS employees (
+          <pre class="sql-block">-- Chạy toàn bộ script này 1 lần trong Supabase SQL Editor
+CREATE TABLE IF NOT EXISTS employees (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  phone TEXT DEFAULT '',
-  role TEXT DEFAULT 'Nhân viên',
+  name TEXT NOT NULL, phone TEXT DEFAULT '',
+  role TEXT DEFAULT 'Nhân viên', created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS pharmacies (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL, code TEXT DEFAULT '',
+  phone TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE TABLE IF NOT EXISTS shipping_providers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL, code TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS orders (
-  id TEXT PRIMARY KEY,
-  name TEXT,
-  saved_at TIMESTAMPTZ DEFAULT NOW(),
-  total NUMERIC DEFAULT 0,
-  cart JSONB DEFAULT '[]',
-  form JSONB DEFAULT '{}',
+  id TEXT PRIMARY KEY, name TEXT,
+  saved_at TIMESTAMPTZ DEFAULT NOW(), total NUMERIC DEFAULT 0,
+  cart JSONB DEFAULT '[]', form JSONB DEFAULT '{}',
   selected_notice INTEGER DEFAULT 0,
-  created_by UUID REFERENCES employees(id) ON DELETE SET NULL
+  created_by UUID REFERENCES employees(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'quoted',
+  erp_code TEXT DEFAULT '',
+  pharmacy_id UUID REFERENCES pharmacies(id) ON DELETE SET NULL,
+  tracking_code TEXT DEFAULT '',
+  shipping_provider_id UUID REFERENCES shipping_providers(id) ON DELETE SET NULL
 );
 CREATE TABLE IF NOT EXISTS inventory (
-  sku TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  price NUMERIC DEFAULT 0,
-  unit TEXT DEFAULT 'Sp',
-  stock INTEGER DEFAULT 0,
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+  sku TEXT PRIMARY KEY, name TEXT NOT NULL,
+  price NUMERIC DEFAULT 0, unit TEXT DEFAULT 'Sp',
+  stock INTEGER DEFAULT 0, updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+-- Thêm cột mới nếu đã tồn tại bảng orders cũ:
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'quoted';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS erp_code TEXT DEFAULT '';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS pharmacy_id UUID REFERENCES pharmacies(id) ON DELETE SET NULL;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_code TEXT DEFAULT '';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_provider_id UUID REFERENCES shipping_providers(id) ON DELETE SET NULL;
+-- RLS
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE orders    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pharmacies ENABLE ROW LEVEL SECURITY;
+ALTER TABLE shipping_providers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "anon_all" ON employees FOR ALL TO anon USING (true) WITH CHECK (true);
 CREATE POLICY "anon_all" ON orders    FOR ALL TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "anon_all" ON inventory FOR ALL TO anon USING (true) WITH CHECK (true);</pre>
+CREATE POLICY "anon_all" ON inventory FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all" ON pharmacies FOR ALL TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "anon_all" ON shipping_providers FOR ALL TO anon USING (true) WITH CHECK (true);</pre>
         </div>
       </div>
     </div>
@@ -1185,6 +1303,56 @@ CREATE POLICY "anon_all" ON inventory FOR ALL TO anon USING (true) WITH CHECK (t
   </div>
 </div>
 
+<!-- ══ CONFIG MODAL (Pharmacies & Shipping Providers) ══ -->
+<div class="modal-overlay" id="configModal" onclick="if(event.target===this)closeConfigModal()">
+  <div class="modal" style="width:min(640px,95vw)">
+    <div class="modal-header">
+      <div class="modal-title">⚙ Cấu hình nhà thuốc & vận chuyển</div>
+      <button class="modal-close" onclick="closeConfigModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:10px">🏪 Nhà thuốc</div>
+        <div class="form-grid" style="gap:6px;margin-bottom:8px">
+          <input type="hidden" id="pharmEditId">
+          <input type="text" id="pharmName" placeholder="Tên nhà thuốc *" style="font-size:12.5px">
+          <input type="text" id="pharmCode" placeholder="Mã nhà thuốc" style="font-size:12.5px">
+          <input type="text" id="pharmPhone" placeholder="Số điện thoại" style="font-size:12.5px">
+          <button class="btn btn-green btn-sm" onclick="savePharmacy()" style="justify-content:center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span id="pharmSaveBtnText">Thêm nhà thuốc</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="pharmCancelBtn" style="display:none;justify-content:center" onclick="cancelPharmEdit()">Huỷ</button>
+        </div>
+        <div id="pharmList" style="display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto">
+          <div class="empty-saved">Chưa có nhà thuốc</div>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:10px">🚚 Nhà vận chuyển</div>
+        <div class="form-grid" style="gap:6px;margin-bottom:8px">
+          <input type="hidden" id="shipEditId">
+          <input type="text" id="shipName" placeholder="Tên nhà vận chuyển *" style="font-size:12.5px">
+          <input type="text" id="shipCode" placeholder="Mã (VD: GHTK, GHN...)" style="font-size:12.5px">
+          <button class="btn btn-green btn-sm" onclick="saveShippingProvider()" style="justify-content:center">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span id="shipSaveBtnText">Thêm</span>
+          </button>
+          <button class="btn btn-outline btn-sm" id="shipCancelBtn" style="display:none;justify-content:center" onclick="cancelShipEdit()">Huỷ</button>
+        </div>
+        <div id="shipList" style="display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto">
+          <div class="empty-saved">Chưa có nhà vận chuyển</div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeConfigModal()">Đóng</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ SAVE MODAL ══ -->
 <div class="modal-overlay" id="saveModal" onclick="if(event.target===this)closeSaveModal()">
   <div class="modal">
@@ -1195,41 +1363,34 @@ CREATE POLICY "anon_all" ON inventory FOR ALL TO anon USING (true) WITH CHECK (t
       </button>
     </div>
     <div class="modal-body">
-      <div class="form-grid" style="gap:14px">
-        <div class="field">
-          <div class="field-label">Tên đơn hàng</div>
-          <input type="text" id="saveOrderName" placeholder="VD: Đơn bà Lan – 15/03/2025">
-        </div>
-        <div style="background:var(--green-xlight);border-radius:var(--r-sm);padding:10px 13px;font-size:12.5px;color:var(--text-2);border:1.5px solid var(--border-light)">
-          💾 Đơn lưu trên Supabase (có internet) + localStorage (dự phòng).
-        </div>
-
-        <div style="border:1.5px solid var(--border-light);border-radius:var(--r-sm);overflow:hidden">
-          <div style="background:var(--surface-2);padding:8px 13px;font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.9px;border-bottom:1px solid var(--border-light)">
-            🗂 Sao lưu &amp; Phục hồi dữ liệu
-          </div>
-          <div style="padding:10px 13px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;min-width:120px" onclick="exportOrders()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Xuất file sao lưu (.json)
-            </button>
-            <button class="btn btn-outline btn-sm" style="flex:1;justify-content:center;min-width:120px;color:var(--blue);border-color:var(--blue)" onclick="document.getElementById('importFileInput').click()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Nhập file phục hồi
-            </button>
-            <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importOrders(event)">
-          </div>
-          <div style="padding:0 13px 10px;font-size:11px;color:var(--text-3);line-height:1.6">
-            Xuất để lưu backup. Nhập để phục hồi khi đổi trình duyệt hoặc mất dữ liệu.
-            <strong style="color:var(--amber)">Nhập sẽ gộp thêm</strong>, không xoá đơn hiện có.
-          </div>
-        </div>
-
+      <!-- Hidden but kept for legacy code compatibility -->
+      <input type="text" id="saveOrderName" style="display:none">
+      <input type="file" id="importFileInput" accept=".json" style="display:none" onchange="importOrders(event)">
+      <div class="form-grid" style="gap:10px">
         <div>
           <div class="sec-title" style="margin-bottom:8px">Đơn đã lưu</div>
-          <div style="position:relative;margin-bottom:10px">
+          <div style="display:flex;gap:6px;margin-bottom:7px">
+            <input type="date" id="modalDateFrom" oninput="filterSavedList(document.getElementById('savedSearchInput').value)" style="flex:1;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font)" title="Từ ngày">
+            <input type="date" id="modalDateTo" oninput="filterSavedList(document.getElementById('savedSearchInput').value)" style="flex:1;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font)" title="Đến ngày">
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:7px">
+            <select id="modalFilterCreator" onchange="filterSavedList(document.getElementById('savedSearchInput').value)" style="flex:1;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font)">
+              <option value="">Tất cả nhân viên</option>
+            </select>
+            <select id="modalFilterStatus" onchange="filterSavedList(document.getElementById('savedSearchInput').value)" style="flex:1;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:var(--font)">
+              <option value="">Tất cả trạng thái</option>
+              <option value="quoted">Đã báo giá</option>
+              <option value="confirmed">Chốt đơn</option>
+              <option value="erp_sent">Chuyển ERP</option>
+              <option value="pharmacy_sent">Đến nhà thuốc</option>
+              <option value="shipped">Lên vận đơn</option>
+              <option value="delivered">Giao hàng</option>
+              <option value="reconciled">Đối soát</option>
+            </select>
+          </div>
+          <div style="position:relative;margin-bottom:8px">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--text-3);pointer-events:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            <input type="text" id="savedSearchInput" placeholder="Tìm theo mã đơn, tên, SĐT..."
+            <input type="text" id="savedSearchInput" placeholder="Tìm mã đơn, tên, SĐT..."
                    style="padding-left:32px;font-size:12.5px"
                    oninput="filterSavedList(this.value)">
           </div>
@@ -1295,8 +1456,11 @@ async function saveSettings() {
   closeSettingsModal();
   await checkConn();
   await loadEmployees();
+  await loadPharmacies();
+  await loadShippingProviders();
   await refreshSavedUI();
   await loadInventory();
+  await loadTrackOrders();
   toast('Đã lưu cài đặt', 'success');
 }
 
@@ -2067,10 +2231,11 @@ function newOrder(){
   document.getElementById('shipFee').value=0;
   document.getElementById('carePointPay').value=0;
   selectedNotice=0; _oldAddress='';
+  _currentOrderStatus = {status:'quoted',erp_code:'',pharmacy_id:'',tracking_code:'',shipping_provider_id:''};
   NOTICES.forEach((_,i)=>{ const p=document.getElementById('noticePill'+i); if(p) p.classList.toggle('active',i===0); });
   document.getElementById('skuResult').classList.remove('show');
   document.getElementById('jsonFallback').classList.remove('show');
-  renderPreview(); toast('Đơn mới: '+orderId,'success');
+  renderPreview(); renderTrackCurrentOrder(); toast('Đơn mới: '+orderId,'success');
 }
 
 /* ══ SAVE / LOAD ══ */
@@ -2087,6 +2252,11 @@ function getSnapshot(){
     id:orderId, savedAt:new Date().toISOString(),
     total:Math.max(0,sub-dd-dv),
     selectedNotice, created_by: (document.getElementById('empSelect')?.value) || null,
+    status: _currentOrderStatus.status,
+    erp_code: _currentOrderStatus.erp_code || '',
+    pharmacy_id: _currentOrderStatus.pharmacy_id || null,
+    tracking_code: _currentOrderStatus.tracking_code || '',
+    shipping_provider_id: _currentOrderStatus.shipping_provider_id || null,
     cart:cartToSave,
     form:{
       senderName:v('senderName'),senderPhone:v('senderPhone'),
@@ -2106,17 +2276,20 @@ async function saveCurrentOrder(){
   snap.name  = rec ? `Đơn ${rec} – ${fmtDate(new Date())}` : `${snap.id} – ${fmtDate(new Date())}`;
   await _persistOrder(snap);
   await refreshSavedUI();
+  renderTrackCurrentOrder();
+  await loadTrackOrders();
   toast('Đã lưu: '+snap.name,'success');
 }
 
 async function saveOrder(){
   const snap = getSnapshot();
-  const nameInput = document.getElementById('saveOrderName').value.trim();
   const rec = snap.form.receiverName;
-  snap.name = nameInput||(rec?`Đơn ${rec}`:snap.id);
+  snap.name = rec ? `Đơn ${rec} – ${fmtDate(new Date())}` : `${snap.id} – ${fmtDate(new Date())}`;
   await _persistOrder(snap);
   await refreshSavedUI();
   renderSavedModal();
+  closeSaveModal();
+  await loadTrackOrders();
   toast('Đã lưu: '+snap.name,'success');
 }
 
@@ -2134,7 +2307,12 @@ async function _persistOrder(snap) {
       saved_at: snap.savedAt, total: snap.total,
       cart: snap.cart, form: snap.form,
       selected_notice: snap.selectedNotice,
-      created_by: snap.created_by || null
+      created_by: snap.created_by || null,
+      status: snap.status || 'quoted',
+      erp_code: snap.erp_code || '',
+      pharmacy_id: snap.pharmacy_id || null,
+      tracking_code: snap.tracking_code || '',
+      shipping_provider_id: snap.shipping_provider_id || null
     });
     if (error) toast('Supabase: ' + error.message, 'error');
   }
@@ -2142,12 +2320,23 @@ async function _persistOrder(snap) {
 
 window._savedOrders = [];
 
+function _mapOrder(o) {
+  return {
+    id:o.id, name:o.name, savedAt:o.saved_at||o.savedAt, total:o.total,
+    cart:o.cart, form:o.form, selectedNotice:o.selected_notice??o.selectedNotice??0,
+    created_by:o.created_by,
+    status:o.status||'quoted', erp_code:o.erp_code||'',
+    pharmacy_id:o.pharmacy_id||null, tracking_code:o.tracking_code||'',
+    shipping_provider_id:o.shipping_provider_id||null
+  };
+}
+
 async function refreshSavedUI() {
   const sb = getSb();
   let list = getSaved();
   if (sb) {
     const { data } = await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(100);
-    if (data) { list = data.map(o=>({id:o.id,name:o.name,savedAt:o.saved_at,total:o.total,cart:o.cart,form:o.form,selectedNotice:o.selected_notice,created_by:o.created_by})); setSaved(list); }
+    if (data) { list = data.map(_mapOrder); setSaved(list); }
   }
   document.getElementById('savedCount').textContent = list.length;
   window._savedOrders = list;
@@ -2159,15 +2348,21 @@ async function renderSavedModal() {
   let list = getSaved();
   if (sb) {
     const { data } = await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(500);
-    if (data) list = data.map(o=>({id:o.id,name:o.name,savedAt:o.saved_at,total:o.total,cart:o.cart,form:o.form,selectedNotice:o.selected_notice,created_by:o.created_by}));
+    if (data) list = data.map(_mapOrder);
   }
   window._savedOrders = list;
   _renderSavedList(list, 'savedListModal', 500);
+  // populate creator dropdown in modal
+  const sel = document.getElementById('modalFilterCreator');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Tất cả nhân viên</option>' +
+      employees.map(e=>`<option value="${e.id}">${e.name.replace(/</g,'&lt;')}</option>`).join('');
+    if (cur) sel.value = cur;
+  }
 }
 
-function loadOrder(idx){
-  const o = window._savedOrders[idx];
-  if (!o) return;
+function _applyOrderToForm(o) {
   cart = JSON.parse(JSON.stringify(o.cart||[]));
   orderId = o.id;
   selectedNotice = o.selectedNotice ?? 0;
@@ -2183,7 +2378,23 @@ function loadOrder(idx){
   set('discountDirect',f.discountDirect||0);set('discountVoucher',f.discountVoucher||0);
   set('shipFee',f.shipFee||0);set('carePointPay',f.carePointPay||0);
   set('orderNote',f.orderNote);
-  renderPreview(); closeSaveModal(); toast('Đã tải đơn: '+o.name,'success');
+  _currentOrderStatus = {
+    status: o.status || 'quoted',
+    erp_code: o.erp_code || '',
+    pharmacy_id: o.pharmacy_id || '',
+    tracking_code: o.tracking_code || '',
+    shipping_provider_id: o.shipping_provider_id || ''
+  };
+  renderPreview();
+  renderTrackCurrentOrder();
+}
+
+function loadOrder(idx){
+  const o = window._savedOrders[idx];
+  if (!o) return;
+  _applyOrderToForm(o);
+  closeSaveModal();
+  toast('Đã tải đơn: '+(o.name||o.id),'success');
 }
 
 async function deleteOrder(idx, e){
@@ -2205,10 +2416,12 @@ function _renderSavedList(list, elId, maxItems){
   el.innerHTML = items.map((o,i) => {
     const emp = employees.find(e => e.id === o.created_by);
     const empTag = emp ? `<span style="background:var(--green-light);color:var(--green);padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap">👤 ${emp.name.replace(/</g,'&lt;')}</span>` : '';
+    const st = ORDER_STATUS_FLOW?.find(s=>s.key===(o.status||'quoted'));
+    const stTag = st ? `<span class="sbadge ${st.cls}" style="font-size:9.5px">${st.icon} ${st.label}</span>` : '';
     return `
     <div class="saved-item" onclick="loadOrder(${i})">
       <div class="saved-item-info">
-        <div class="saved-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${(o.name||'').replace(/</g,'&lt;')} ${empTag}</div>
+        <div class="saved-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${(o.name||'').replace(/</g,'&lt;')} ${empTag} ${stTag}</div>
         <div class="saved-meta">${o.id} · ${o.savedAt?fmtDate(new Date(o.savedAt)):''} · ${fmt(o.total||0)} ₫</div>
       </div>
       <button class="saved-del" onclick="deleteOrder(${i},event)">
@@ -2219,24 +2432,29 @@ function _renderSavedList(list, elId, maxItems){
 }
 
 function openSaveModal(){
-  const rec=document.getElementById('receiverName').value.trim();
-  document.getElementById('saveOrderName').value=rec?`Đơn ${rec} – ${fmtDate(new Date())}`:orderId+' – '+fmtDate(new Date());
   const s=document.getElementById('savedSearchInput'); if(s) s.value='';
+  ['modalDateFrom','modalDateTo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   renderSavedModal();
   document.getElementById('saveModal').classList.add('open');
 }
 function closeSaveModal(){ document.getElementById('saveModal').classList.remove('open'); }
 
 async function filterSavedList(q){
-  const kw=q.trim().toLowerCase();
-  if(!kw){ renderSavedModal(); return; }
+  const kw=(q||'').trim().toLowerCase();
+  const dateFrom = document.getElementById('modalDateFrom')?.value||'';
+  const dateTo   = document.getElementById('modalDateTo')?.value||'';
+  const creator  = document.getElementById('modalFilterCreator')?.value||'';
+  const status   = document.getElementById('modalFilterStatus')?.value||'';
   const sb=getSb(); let list=getSaved();
-  if(sb){const{data}=await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(500);if(data)list=data.map(o=>({id:o.id,name:o.name,savedAt:o.saved_at,total:o.total,cart:o.cart,form:o.form,selectedNotice:o.selected_notice,created_by:o.created_by}));}
-  const filtered=list.filter(o=>{const f=o.form||{};const emp=employees.find(e=>e.id===o.created_by);const empN=(emp?.name||'').toLowerCase();return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw)||empN.includes(kw);});
+  if(sb){const{data}=await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(500);if(data)list=data.map(_mapOrder);}
+  let filtered=list;
+  if(kw) filtered=filtered.filter(o=>{const f=o.form||{};const emp=employees.find(e=>e.id===o.created_by);return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw)||((emp?.name||'').toLowerCase()).includes(kw);});
+  if(dateFrom) filtered=filtered.filter(o=>o.savedAt&&o.savedAt>=dateFrom);
+  if(dateTo)   filtered=filtered.filter(o=>o.savedAt&&o.savedAt.slice(0,10)<=dateTo);
+  if(creator)  filtered=filtered.filter(o=>o.created_by===creator);
+  if(status)   filtered=filtered.filter(o=>(o.status||'quoted')===status);
   window._savedOrders=filtered;
-  const el=document.getElementById('savedListModal');
-  if(!filtered.length){el.innerHTML='<div class="empty-saved">Không tìm thấy đơn nào</div>';return;}
-  el.innerHTML=filtered.map((o,i)=>{const emp=employees.find(e=>e.id===o.created_by);const et=emp?`<span style="background:var(--green-light);color:var(--green);padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700">👤 ${emp.name.replace(/</g,'&lt;')}</span>`:'';return`<div class="saved-item" onclick="loadOrder(${i})"><div class="saved-item-info"><div class="saved-name" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">${(o.name||'').replace(/</g,'&lt;')} ${et}</div><div class="saved-meta">${o.id} · ${o.savedAt?fmtDate(new Date(o.savedAt)):''} · ${fmt(o.total||0)} ₫</div></div><button class="saved-del" onclick="deleteOrder(${i},event)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></button></div>`;}).join('');
+  _renderSavedList(filtered,'savedListModal',500);
 }
 
 /* ══ EXPORT / IMPORT JSON ══ */
@@ -2349,6 +2567,363 @@ function toast(msg,type='info'){
   document.getElementById('toastWrap').appendChild(t);setTimeout(()=>t.remove(),3500);
 }
 
+/* ══ ORDER STATUS FLOW ══ */
+const ORDER_STATUS_FLOW = [
+  { key:'quoted',        label:'Đã báo giá',              icon:'📋', cls:'sb-quoted' },
+  { key:'confirmed',     label:'Khách chốt đơn',          icon:'✅', cls:'sb-confirmed' },
+  { key:'erp_sent',      label:'Đã chuyển sang ERP',      icon:'🔄', cls:'sb-erp' },
+  { key:'pharmacy_sent', label:'Đã chuyển đến nhà thuốc', icon:'🏪', cls:'sb-pharmacy', extra:'pharmacy' },
+  { key:'shipped',       label:'Đã lên vận đơn',          icon:'🚚', cls:'sb-shipped',  extra:'tracking' },
+  { key:'delivered',     label:'Đã giao hàng',            icon:'📦', cls:'sb-delivered' },
+  { key:'reconciled',    label:'Đã đối soát',             icon:'✔️', cls:'sb-reconciled' }
+];
+
+let pharmacies = [];
+let shippingProviders = [];
+let _currentOrderStatus = { status:'quoted', erp_code:'', pharmacy_id:'', tracking_code:'', shipping_provider_id:'' };
+
+async function loadPharmacies() {
+  const sb = getSb();
+  if (!sb) return;
+  const { data } = await sb.from('pharmacies').select('*').order('name');
+  if (data) pharmacies = data;
+}
+
+async function loadShippingProviders() {
+  const sb = getSb();
+  if (!sb) return;
+  const { data } = await sb.from('shipping_providers').select('*').order('name');
+  if (data) shippingProviders = data;
+}
+
+/* ── Track panel: current order status stepper ── */
+function renderTrackCurrentOrder() {
+  const el = document.getElementById('trackCurrentOrder');
+  if (!el) return;
+  const recName = document.getElementById('receiverName')?.value?.trim() || '';
+  if (!recName && !cart.length && orderId === makeId()) {
+    el.innerHTML = '<div style="color:var(--text-3);font-size:12px;text-align:center;padding:10px 0">Chưa tải đơn nào</div>';
+    return;
+  }
+  const idx = ORDER_STATUS_FLOW.findIndex(s => s.key === (_currentOrderStatus.status||'quoted'));
+  const statusObj = ORDER_STATUS_FLOW[idx] || ORDER_STATUS_FLOW[0];
+  el.innerHTML = `
+    <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green);margin-bottom:2px">${orderId}</div>
+    <div style="font-size:11.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px">${(recName||'Đơn chưa đặt tên').replace(/</g,'&lt;')}</div>
+    <div style="margin-bottom:6px"><span class="sbadge ${statusObj.cls}">${statusObj.icon} ${statusObj.label}</span></div>
+    <div class="status-steps">
+      ${ORDER_STATUS_FLOW.map((s,i) => {
+        const isDone = i < idx, isCur = i === idx, isPend = i > idx;
+        const dotCls = isDone?'d-done':isCur?'d-current':'d-pending';
+        const lblCls = isDone?'l-done':isCur?'l-current':'l-pending';
+        const stepCls = isCur?'s-current':isDone?'s-done':'';
+        let sub = '';
+        if (s.key==='pharmacy_sent' && (isDone||isCur)) {
+          const ph = pharmacies.find(p=>p.id===_currentOrderStatus.pharmacy_id);
+          if (ph) sub = `<div class="step-sub">${ph.name.replace(/</g,'&lt;')}${_currentOrderStatus.erp_code?' · ERP: '+_currentOrderStatus.erp_code:''}</div>`;
+          else if (_currentOrderStatus.erp_code) sub = `<div class="step-sub">ERP: ${_currentOrderStatus.erp_code}</div>`;
+        }
+        if (s.key==='shipped' && (isDone||isCur) && _currentOrderStatus.tracking_code) {
+          const sp = shippingProviders.find(p=>p.id===_currentOrderStatus.shipping_provider_id);
+          sub = `<div class="step-sub">${sp?sp.name.replace(/</g,'&lt;')+' · ':''} ${_currentOrderStatus.tracking_code}</div>`;
+        }
+        let form = '';
+        if (isCur) {
+          if (s.extra === 'pharmacy') {
+            form = `<div class="step-extra-form">
+              <input type="text" id="stepErpCode" value="${_currentOrderStatus.erp_code||''}" placeholder="Mã đơn ERP (tuỳ chọn)">
+              <select id="stepPharmacy">
+                <option value="">— Chọn nhà thuốc —</option>
+                ${pharmacies.map(p=>`<option value="${p.id}" ${_currentOrderStatus.pharmacy_id===p.id?'selected':''}>${p.name.replace(/</g,'&lt;')}</option>`).join('')}
+              </select>
+              <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('pharmacy_sent')">Xác nhận bước này</button>
+            </div>`;
+          } else if (s.extra === 'tracking') {
+            form = `<div class="step-extra-form">
+              <select id="stepShipper">
+                <option value="">— Nhà vận chuyển —</option>
+                ${shippingProviders.map(p=>`<option value="${p.id}" ${_currentOrderStatus.shipping_provider_id===p.id?'selected':''}>${p.name.replace(/</g,'&lt;')}</option>`).join('')}
+              </select>
+              <input type="text" id="stepTrackCode" value="${_currentOrderStatus.tracking_code||''}" placeholder="Mã vận đơn">
+              <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('shipped')">Xác nhận bước này</button>
+            </div>`;
+          } else {
+            form = `<div class="step-extra-form"><button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('${s.key}')">Xác nhận bước này</button></div>`;
+          }
+        }
+        return `<div class="status-step ${stepCls}" onclick="if(${isPend||isDone?1:0})jumpStatus('${s.key}')">
+          <div class="step-dot ${dotCls}">${isDone?'✓':i+1}</div>
+          <div style="flex:1;min-width:0">
+            <div class="step-label ${lblCls}">${s.icon} ${s.label}</div>
+            ${sub}${form}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+async function advanceStatus(key) {
+  const extra = {};
+  if (key==='pharmacy_sent') {
+    extra.erp_code = document.getElementById('stepErpCode')?.value.trim()||'';
+    extra.pharmacy_id = document.getElementById('stepPharmacy')?.value||'';
+  } else if (key==='shipped') {
+    extra.shipping_provider_id = document.getElementById('stepShipper')?.value||'';
+    extra.tracking_code = document.getElementById('stepTrackCode')?.value.trim()||'';
+  }
+  _currentOrderStatus = {..._currentOrderStatus, status:key, ...extra};
+  await _persistOrderStatus();
+  renderTrackCurrentOrder();
+  await loadTrackOrders();
+  const s = ORDER_STATUS_FLOW.find(s=>s.key===key);
+  toast(`Cập nhật: ${s?.label}`, 'success');
+}
+
+async function jumpStatus(key) {
+  const s = ORDER_STATUS_FLOW.find(x=>x.key===key);
+  if (!confirm(`Chuyển trạng thái sang: ${s?.label}?`)) return;
+  _currentOrderStatus = {..._currentOrderStatus, status:key};
+  await _persistOrderStatus();
+  renderTrackCurrentOrder();
+  await loadTrackOrders();
+}
+
+async function _persistOrderStatus() {
+  const list = getSaved();
+  const idx = list.findIndex(o=>o.id===orderId);
+  if (idx>=0) { list[idx]={...list[idx],..._currentOrderStatus}; setSaved(list); }
+  const sb = getSb();
+  if (sb) {
+    await sb.from('orders').update({
+      status: _currentOrderStatus.status,
+      erp_code: _currentOrderStatus.erp_code||'',
+      pharmacy_id: _currentOrderStatus.pharmacy_id||null,
+      tracking_code: _currentOrderStatus.tracking_code||'',
+      shipping_provider_id: _currentOrderStatus.shipping_provider_id||null
+    }).eq('id', orderId);
+  }
+}
+
+/* ── Track panel: order list with filters ── */
+let _trackOrders = [];
+window._trackOrdersFiltered = [];
+
+async function loadTrackOrders() {
+  const sb = getSb();
+  let list = getSaved();
+  if (sb) {
+    const { data } = await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(500);
+    if (data) { list = data.map(_mapOrder); setSaved(list); }
+  }
+  _trackOrders = list;
+  // update creator dropdown
+  const sel = document.getElementById('trackCreator');
+  if (sel) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Tất cả NV</option>' +
+      employees.map(e=>`<option value="${e.id}">${e.name.replace(/</g,'&lt;')}</option>`).join('');
+    if (cur) sel.value = cur;
+  }
+  filterTrackOrders();
+}
+
+function filterTrackOrders() {
+  const dateFrom = document.getElementById('trackDateFrom')?.value||'';
+  const dateTo   = document.getElementById('trackDateTo')?.value||'';
+  const kw       = (document.getElementById('trackSearch')?.value||'').toLowerCase().trim();
+  const creator  = document.getElementById('trackCreator')?.value||'';
+  const status   = document.getElementById('trackStatus')?.value||'';
+  let list = _trackOrders;
+  if (dateFrom) list = list.filter(o=>o.savedAt&&o.savedAt>=dateFrom);
+  if (dateTo)   list = list.filter(o=>o.savedAt&&o.savedAt.slice(0,10)<=dateTo);
+  if (kw)       list = list.filter(o=>{const f=o.form||{};return(o.id||'').toLowerCase().includes(kw)||(o.name||'').toLowerCase().includes(kw)||(f.receiverName||'').toLowerCase().includes(kw)||(f.senderName||'').toLowerCase().includes(kw)||(f.receiverPhone||'').toLowerCase().includes(kw)||(f.senderPhone||'').toLowerCase().includes(kw);});
+  if (creator)  list = list.filter(o=>o.created_by===creator);
+  if (status)   list = list.filter(o=>(o.status||'quoted')===status);
+  window._trackOrdersFiltered = list;
+  renderTrackList(list);
+}
+
+function renderTrackList(list) {
+  const el = document.getElementById('trackOrderList');
+  const cnt = document.getElementById('trackListCount');
+  if (!el) return;
+  if (cnt) cnt.textContent = list.length;
+  if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-3);font-size:12px">Không có đơn nào</div>'; return; }
+  el.innerHTML = list.slice(0,80).map((o,i) => {
+    const s = ORDER_STATUS_FLOW.find(x=>x.key===(o.status||'quoted'))||ORDER_STATUS_FLOW[0];
+    const f = o.form||{};
+    const disp = (f.receiverName||o.name||o.id).replace(/</g,'&lt;');
+    const isActive = o.id === orderId;
+    return `<div class="track-order-item ${isActive?'trk-active':''}" onclick="loadTrackOrder(${i})">
+      <div class="track-item-id">${o.id}</div>
+      <div class="track-item-name">${disp}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+        <span class="sbadge ${s.cls}">${s.icon} ${s.label}</span>
+        <span style="font-size:10px;color:var(--text-3)">${o.savedAt?fmtDate(new Date(o.savedAt)):''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadTrackOrder(i) {
+  const list = window._trackOrdersFiltered;
+  const o = list[i];
+  if (!o) return;
+  _applyOrderToForm(o);
+  renderTrackList(list);
+  toast('Đã tải: '+(o.form?.receiverName||o.name||o.id),'success');
+}
+
+/* ── Excel export ── */
+function exportOrdersExcel() {
+  const list = (window._trackOrdersFiltered||[]).length ? window._trackOrdersFiltered : _trackOrders;
+  if (!list.length) { toast('Không có đơn để xuất', 'error'); return; }
+  const rows = [['Mã đơn','Tên đơn','Ngày lập','Người đặt','SĐT người đặt','Người nhận','SĐT người nhận','Địa chỉ','Thanh toán','Tổng tiền','Giảm TT','Giảm Voucher','Điểm Care','Phí VC','Trạng thái','Mã ERP','Nhà thuốc','Nhà vận chuyển','Mã vận đơn','Nhân viên','Ngày giao','Ghi chú']];
+  list.forEach(o => {
+    const f = o.form||{};
+    const s = ORDER_STATUS_FLOW.find(x=>x.key===(o.status||'quoted'));
+    const ph = pharmacies.find(p=>p.id===o.pharmacy_id);
+    const sp = shippingProviders.find(p=>p.id===o.shipping_provider_id);
+    const emp = employees.find(e=>e.id===o.created_by);
+    rows.push([
+      o.id, o.name||'',
+      o.savedAt?new Date(o.savedAt).toLocaleDateString('vi-VN'):'',
+      f.senderName||'', f.senderPhone||'',
+      f.receiverName||'', f.receiverPhone||'',
+      f.address||'', f.paymentMethod||'',
+      o.total||0, f.discountDirect||0, f.discountVoucher||0, f.carePointPay||0, f.shipFee||0,
+      s?.label||'', o.erp_code||'',
+      ph?.name||'', sp?.name||'', o.tracking_code||'',
+      emp?.name||'',
+      f.deliveryDate?new Date(f.deliveryDate+'T00:00:00').toLocaleDateString('vi-VN'):'',
+      f.orderNote||''
+    ]);
+  });
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:14},{wch:28},{wch:12},{wch:20},{wch:14},{wch:20},{wch:14},{wch:38},{wch:14},{wch:12},{wch:10},{wch:10},{wch:10},{wch:10},{wch:20},{wch:14},{wch:22},{wch:18},{wch:14},{wch:18},{wch:12},{wch:28}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Đơn hàng');
+  XLSX.writeFile(wb, `tsp-don-hang-${new Date().toISOString().slice(0,10)}.xlsx`);
+  toast(`Đã xuất ${list.length} đơn ra Excel ✅`, 'success');
+}
+
+/* ── Config modal: pharmacies & shipping providers ── */
+function openConfigModal() {
+  renderPharmList(); renderShipList();
+  document.getElementById('configModal').classList.add('open');
+}
+function closeConfigModal() { document.getElementById('configModal').classList.remove('open'); }
+
+function renderPharmList() {
+  const el = document.getElementById('pharmList');
+  if (!el) return;
+  if (!pharmacies.length) { el.innerHTML = '<div class="empty-saved" style="font-size:12px">Chưa có nhà thuốc</div>'; return; }
+  el.innerHTML = pharmacies.map((p,i) => `
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 9px;border:1.5px solid var(--border-light);border-radius:var(--r-sm)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">${p.name.replace(/</g,'&lt;')}</div>
+        ${p.code||p.phone?`<div style="font-size:10.5px;color:var(--text-3)">${[p.code,p.phone].filter(Boolean).join(' · ')}</div>`:''}
+      </div>
+      <button class="btn btn-outline btn-sm" style="font-size:10.5px;padding:2px 7px" onclick="editPharmacy(${i})">Sửa</button>
+      <button class="btn btn-sm" style="font-size:10.5px;padding:2px 7px;color:var(--red);border:1.5px solid var(--red);background:#fff" onclick="deletePharmacy('${p.id}')">Xoá</button>
+    </div>`).join('');
+}
+
+function editPharmacy(i) {
+  const p = pharmacies[i];
+  document.getElementById('pharmEditId').value = p.id;
+  document.getElementById('pharmName').value = p.name;
+  document.getElementById('pharmCode').value = p.code||'';
+  document.getElementById('pharmPhone').value = p.phone||'';
+  document.getElementById('pharmSaveBtnText').textContent = 'Cập nhật';
+  document.getElementById('pharmCancelBtn').style.display = 'flex';
+}
+function cancelPharmEdit() {
+  ['pharmEditId','pharmName','pharmCode','pharmPhone'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('pharmSaveBtnText').textContent = 'Thêm nhà thuốc';
+  document.getElementById('pharmCancelBtn').style.display = 'none';
+}
+async function savePharmacy() {
+  const name = document.getElementById('pharmName').value.trim();
+  if (!name) { toast('Nhập tên nhà thuốc', 'error'); return; }
+  const code = document.getElementById('pharmCode').value.trim();
+  const phone = document.getElementById('pharmPhone').value.trim();
+  const editId = document.getElementById('pharmEditId').value;
+  const sb = getSb();
+  if (sb) {
+    if (editId) await sb.from('pharmacies').update({name,code,phone}).eq('id',editId);
+    else await sb.from('pharmacies').insert({name,code,phone});
+  } else {
+    const id = editId||'local-'+Date.now();
+    if (editId) { const idx=pharmacies.findIndex(p=>p.id===editId); if(idx>=0) pharmacies[idx]={id,name,code,phone}; }
+    else pharmacies.push({id,name,code,phone});
+  }
+  cancelPharmEdit();
+  await loadPharmacies(); renderPharmList();
+  toast(editId?'Đã cập nhật nhà thuốc':'Đã thêm nhà thuốc','success');
+}
+async function deletePharmacy(id) {
+  if (!confirm('Xoá nhà thuốc này?')) return;
+  const sb = getSb();
+  if (sb) await sb.from('pharmacies').delete().eq('id',id);
+  else pharmacies = pharmacies.filter(p=>p.id!==id);
+  await loadPharmacies(); renderPharmList();
+}
+
+function renderShipList() {
+  const el = document.getElementById('shipList');
+  if (!el) return;
+  if (!shippingProviders.length) { el.innerHTML = '<div class="empty-saved" style="font-size:12px">Chưa có nhà vận chuyển</div>'; return; }
+  el.innerHTML = shippingProviders.map((p,i) => `
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 9px;border:1.5px solid var(--border-light);border-radius:var(--r-sm)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:600">${p.name.replace(/</g,'&lt;')}</div>
+        ${p.code?`<div style="font-size:10.5px;color:var(--text-3)">${p.code}</div>`:''}
+      </div>
+      <button class="btn btn-outline btn-sm" style="font-size:10.5px;padding:2px 7px" onclick="editShipProvider(${i})">Sửa</button>
+      <button class="btn btn-sm" style="font-size:10.5px;padding:2px 7px;color:var(--red);border:1.5px solid var(--red);background:#fff" onclick="deleteShipProvider('${p.id}')">Xoá</button>
+    </div>`).join('');
+}
+
+function editShipProvider(i) {
+  const p = shippingProviders[i];
+  document.getElementById('shipEditId').value = p.id;
+  document.getElementById('shipName').value = p.name;
+  document.getElementById('shipCode').value = p.code||'';
+  document.getElementById('shipSaveBtnText').textContent = 'Cập nhật';
+  document.getElementById('shipCancelBtn').style.display = 'flex';
+}
+function cancelShipEdit() {
+  ['shipEditId','shipName','shipCode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('shipSaveBtnText').textContent = 'Thêm';
+  document.getElementById('shipCancelBtn').style.display = 'none';
+}
+async function saveShippingProvider() {
+  const name = document.getElementById('shipName').value.trim();
+  if (!name) { toast('Nhập tên nhà vận chuyển', 'error'); return; }
+  const code = document.getElementById('shipCode').value.trim();
+  const editId = document.getElementById('shipEditId').value;
+  const sb = getSb();
+  if (sb) {
+    if (editId) await sb.from('shipping_providers').update({name,code}).eq('id',editId);
+    else await sb.from('shipping_providers').insert({name,code});
+  } else {
+    const id = editId||'local-'+Date.now();
+    if (editId) { const idx=shippingProviders.findIndex(p=>p.id===editId); if(idx>=0) shippingProviders[idx]={id,name,code}; }
+    else shippingProviders.push({id,name,code});
+  }
+  cancelShipEdit();
+  await loadShippingProviders(); renderShipList();
+  toast(editId?'Đã cập nhật':'Đã thêm nhà vận chuyển','success');
+}
+async function deleteShipProvider(id) {
+  if (!confirm('Xoá nhà vận chuyển này?')) return;
+  const sb = getSb();
+  if (sb) await sb.from('shipping_providers').delete().eq('id',id);
+  else shippingProviders = shippingProviders.filter(p=>p.id!==id);
+  await loadShippingProviders(); renderShipList();
+}
+
 /* ══ MOBILE TAB ══ */
 function switchTab(tab){
   const pL=document.getElementById('panelLeft'),pR=document.getElementById('panelRight');
@@ -2366,8 +2941,12 @@ function switchTab(tab){
   renderPreview();
   await checkConn();
   await loadEmployees();
+  await loadPharmacies();
+  await loadShippingProviders();
   await refreshSavedUI();
   await loadInventory();
+  await loadTrackOrders();
+  renderTrackCurrentOrder();
 })();
 </script>
 </body>
