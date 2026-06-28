@@ -860,17 +860,35 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
         </div>
       </div>
 
-      <!-- Đơn đã lưu -->
-      <div class="section">
-        <div class="sec-title" style="justify-content:space-between">
-          <span style="display:flex;align-items:center;gap:6px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/></svg>
-            Đơn đã lưu (<span id="savedCount">0</span>)
-          </span>
-          <button class="btn btn-outline btn-sm" onclick="openSaveModal()">Xem tất cả</button>
+      <!-- Tìm kiếm & danh sách đơn hàng -->
+      <div class="section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;border-bottom:none;padding-bottom:8px">
+        <div class="track-filter-row">
+          <input type="date" id="trackDateFrom" oninput="filterTrackOrders()" title="Từ ngày">
+          <input type="date" id="trackDateTo" oninput="filterTrackOrders()" title="Đến ngày">
         </div>
-        <div class="saved-list" id="savedListSidebar">
-          <div class="empty-saved">Chưa có đơn nào</div>
+        <input class="track-search" type="text" id="trackSearch" placeholder="Tên, SĐT, mã đơn..." oninput="filterTrackOrders()">
+        <div class="track-filter-row">
+          <select id="trackCreator" onchange="filterTrackOrders()"><option value="">Tất cả NV</option></select>
+          <select id="trackStatus" onchange="filterTrackOrders()">
+            <option value="">Tất cả TT</option>
+            <option value="quoted">Đã báo giá</option>
+            <option value="confirmed">Chốt đơn</option>
+            <option value="erp_sent">Chuyển ERP</option>
+            <option value="pharmacy_sent">Đến NT</option>
+            <option value="shipped">Lên vận đơn</option>
+            <option value="delivered">Giao hàng</option>
+            <option value="reconciled">Đối soát</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin:7px 0 5px">
+          <span style="font-size:11px;color:var(--text-3)"><span id="trackListCount">0</span> đơn</span>
+          <button class="btn btn-green btn-sm" onclick="exportOrdersExcel()" style="font-size:11px;padding:4px 9px;gap:4px">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Excel
+          </button>
+        </div>
+        <div class="track-order-list" id="trackOrderList" style="flex:1;overflow-y:auto">
+          <div style="text-align:center;padding:14px;color:var(--text-3);font-size:12px">Đang tải...</div>
         </div>
       </div>
 
@@ -1069,38 +1087,6 @@ table.qt tbody tr:hover .qt-del-btn{opacity:1}
       <!-- Current order status -->
       <div class="track-section" id="trackCurrentOrder">
         <div style="color:var(--text-3);font-size:12px;text-align:center;padding:10px 0">Chưa tải đơn nào</div>
-      </div>
-      <!-- Filters + list -->
-      <div class="track-section">
-        <div style="font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">Tất cả đơn hàng</div>
-        <div class="track-filter-row">
-          <input type="date" id="trackDateFrom" oninput="filterTrackOrders()" title="Từ ngày">
-          <input type="date" id="trackDateTo" oninput="filterTrackOrders()" title="Đến ngày">
-        </div>
-        <input class="track-search" type="text" id="trackSearch" placeholder="Tên, SĐT, mã đơn..." oninput="filterTrackOrders()">
-        <div class="track-filter-row">
-          <select id="trackCreator" onchange="filterTrackOrders()"><option value="">Tất cả NV</option></select>
-          <select id="trackStatus" onchange="filterTrackOrders()">
-            <option value="">Tất cả TT</option>
-            <option value="quoted">Đã báo giá</option>
-            <option value="confirmed">Chốt đơn</option>
-            <option value="erp_sent">Chuyển ERP</option>
-            <option value="pharmacy_sent">Đến NT</option>
-            <option value="shipped">Lên vận đơn</option>
-            <option value="delivered">Giao hàng</option>
-            <option value="reconciled">Đối soát</option>
-          </select>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin:7px 0 6px">
-          <span style="font-size:11px;color:var(--text-3)"><span id="trackListCount">0</span> đơn</span>
-          <button class="btn btn-green btn-sm" onclick="exportOrdersExcel()" style="font-size:11px;padding:4px 9px;gap:4px">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Excel
-          </button>
-        </div>
-        <div class="track-order-list" id="trackOrderList">
-          <div style="text-align:center;padding:14px;color:var(--text-3);font-size:12px">Đang tải...</div>
-        </div>
       </div>
     </div>
   </div>
@@ -2228,13 +2214,23 @@ function removeItem(i){ const n=cart[i].name; cart.splice(i,1); renderPreview();
 function clearCart(){ if(!cart.length)return; if(!confirm('Xoá toàn bộ?'))return; cart=[]; renderPreview(); toast('Đã xoá đơn','info'); }
 
 /* ══ ORDER ID ══ */
-let counter = parseInt(localStorage.getItem('tsp_ctr')||'1');
-let orderId = makeId();
-function makeId(){ return '#TSP-' + String(counter).padStart(6,'0'); }
+function makeECMId() {
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const dateStr = yy+mm+dd;
+  const s = JSON.parse(localStorage.getItem('tsp_ecm_ctr')||'{}');
+  const n = s.date===dateStr ? (s.n||0)+1 : 1;
+  localStorage.setItem('tsp_ecm_ctr', JSON.stringify({date:dateStr, n}));
+  return `ECM${dateStr}-${String(n).padStart(3,'0')}`;
+}
+let _isNewOrder = true;
+let orderId = makeECMId();
 
 function newOrder(){
   if(cart.length && !confirm('Tạo đơn mới sẽ xoá đơn hiện tại?'))return;
-  cart=[]; counter++; localStorage.setItem('tsp_ctr',counter); orderId=makeId();
+  cart=[]; orderId=makeECMId(); _isNewOrder=true;
   ['senderName','senderPhone','receiverName','receiverPhone','address','orderNote']
     .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('deliveryDate').value=new Date(Date.now()+2*86400000).toISOString().split('T')[0];
@@ -2350,9 +2346,7 @@ async function refreshSavedUI() {
     const { data } = await sb.from('orders').select('*').order('saved_at',{ascending:false}).limit(100);
     if (data) { list = data.map(_mapOrder); setSaved(list); }
   }
-  document.getElementById('savedCount').textContent = list.length;
   window._savedOrders = list;
-  _renderSavedList(list, 'savedListSidebar', 100);
 }
 
 async function renderSavedModal() {
@@ -2376,7 +2370,7 @@ async function renderSavedModal() {
 
 function _applyOrderToForm(o) {
   cart = JSON.parse(JSON.stringify(o.cart||[]));
-  orderId = o.id;
+  orderId = o.id; _isNewOrder = false;
   selectedNotice = o.selectedNotice ?? 0;
   selectedEmployee = o.created_by || '';
   document.getElementById('empSelect').value = selectedEmployee;
@@ -2613,7 +2607,7 @@ function renderTrackCurrentOrder() {
   const el = document.getElementById('trackCurrentOrder');
   if (!el) return;
   const recName = document.getElementById('receiverName')?.value?.trim() || '';
-  if (!recName && !cart.length && orderId === makeId()) {
+  if (!recName && !cart.length && _isNewOrder) {
     el.innerHTML = '<div style="color:var(--text-3);font-size:12px;text-align:center;padding:10px 0">Chưa tải đơn nào</div>';
     return;
   }
