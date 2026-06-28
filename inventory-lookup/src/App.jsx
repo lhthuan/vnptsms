@@ -1279,7 +1279,7 @@ export default function App() {
                             <div style={{ fontSize:16 }}>{r.hasAll?"✅":"⚠"}</div>
                             <div style={{ flex:1 }}>
                               <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
-                                <span style={{ fontWeight:700, color:r.hasAll?C.accent:C.red, fontSize:12, fontWeight:700 }}>Chi nhánh {r.chiNhanh}</span>
+                                <span style={{ fontWeight:700, color:r.hasAll?C.accent:C.red, fontSize:12 }}>Chi nhánh {r.chiNhanh}</span>
                                 <span style={{ fontSize:10, color:C.mutedLight }}>{r.tinhThanh}</span>
                               </div>
                               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
