@@ -2638,10 +2638,16 @@ function renderTrackCurrentOrder() {
           if (s.extra === 'pharmacy') {
             form = `<div class="step-extra-form">
               <input type="text" id="stepErpCode" value="${_currentOrderStatus.erp_code||''}" placeholder="Mã đơn ERP (tuỳ chọn)">
-              <select id="stepPharmacy">
-                <option value="">— Chọn nhà thuốc —</option>
-                ${pharmacies.map(p=>`<option value="${p.id}" ${_currentOrderStatus.pharmacy_id===p.id?'selected':''}>${p.name.replace(/</g,'&lt;')}</option>`).join('')}
-              </select>
+              <div style="position:relative">
+                <input type="text" id="stepPharmacySearch" placeholder="Tìm nhà thuốc (tên hoặc mã)..." autocomplete="off"
+                  value="${_getPharmDisplay()}"
+                  oninput="filterPharmSearch(this.value)"
+                  onfocus="filterPharmSearch(this.value)"
+                  onblur="setTimeout(()=>{const d=document.getElementById('pharmSearchDrop');if(d)d.style.display='none'},200)"
+                  style="width:100%;padding-right:28px">
+                <input type="hidden" id="stepPharmacyId" value="${_currentOrderStatus.pharmacy_id||''}">
+                <div id="pharmSearchDrop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--green-mid);border-radius:0 0 6px 6px;z-index:200;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
+              </div>
               <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('pharmacy_sent')">Xác nhận bước này</button>
             </div>`;
           } else if (s.extra === 'tracking') {
@@ -2668,11 +2674,48 @@ function renderTrackCurrentOrder() {
     </div>`;
 }
 
+function _getPharmDisplay() {
+  const p = pharmacies.find(x => x.id === _currentOrderStatus.pharmacy_id);
+  return p ? ((p.code ? p.code + ' – ' : '') + p.name).replace(/"/g, '&quot;') : '';
+}
+
+function filterPharmSearch(q) {
+  const drop = document.getElementById('pharmSearchDrop');
+  if (!drop) return;
+  const lower = (q || '').toLowerCase();
+  const matches = pharmacies.filter(p =>
+    !lower || p.name.toLowerCase().includes(lower) || (p.code || '').toLowerCase().includes(lower)
+  ).slice(0, 30);
+  if (!matches.length) { drop.style.display = 'none'; return; }
+  drop.style.display = 'block';
+  drop.innerHTML = matches.map(p => {
+    const code = (p.code || '').replace(/</g, '&lt;');
+    const name = p.name.replace(/</g, '&lt;');
+    const idEsc = p.id.replace(/'/g, "\\'");
+    const codeEsc = (p.code||'').replace(/'/g, "\\'");
+    const nameEsc = p.name.replace(/'/g, "\\'");
+    return `<div onclick="selectPharm('${idEsc}','${codeEsc}','${nameEsc}')"
+      style="padding:7px 10px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border-light);display:flex;gap:8px;align-items:center">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--text-3);white-space:nowrap">${code||'—'}</span>
+      <span>${name}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectPharm(id, code, name) {
+  const inp = document.getElementById('stepPharmacySearch');
+  const hid = document.getElementById('stepPharmacyId');
+  const drop = document.getElementById('pharmSearchDrop');
+  if (inp) inp.value = (code ? code + ' – ' : '') + name;
+  if (hid) hid.value = id;
+  if (drop) drop.style.display = 'none';
+}
+
 async function advanceStatus(key) {
   const extra = {};
   if (key==='pharmacy_sent') {
     extra.erp_code = document.getElementById('stepErpCode')?.value.trim()||'';
-    extra.pharmacy_id = document.getElementById('stepPharmacy')?.value||'';
+    extra.pharmacy_id = document.getElementById('stepPharmacyId')?.value||'';
   } else if (key==='shipped') {
     extra.shipping_provider_id = document.getElementById('stepShipper')?.value||'';
     extra.tracking_code = document.getElementById('stepTrackCode')?.value.trim()||'';
@@ -2687,7 +2730,6 @@ async function advanceStatus(key) {
 
 async function jumpStatus(key) {
   const s = ORDER_STATUS_FLOW.find(x=>x.key===key);
-  if (!confirm(`Chuyển trạng thái sang: ${s?.label}?`)) return;
   _currentOrderStatus = {..._currentOrderStatus, status:key};
   await _persistOrderStatus();
   renderTrackCurrentOrder();
