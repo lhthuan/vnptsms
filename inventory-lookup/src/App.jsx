@@ -852,22 +852,23 @@ export default function App() {
           <div style={s.sbBody}>
             {fileList.length===0 && activeRows.length===0 && <div style={{ padding:"24px 16px", textAlign:"center", color:"#7a9bbf", fontSize:11 }}>Chưa có file nào</div>}
             {(activeFileId==="__supabase__" || syncState==="syncing") && (
-              <div style={s.fileItem(activeFileId==="__supabase__")}>
-                <span style={{ fontSize:16 }}>☁️</span>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={s.fileName(true)}>Dữ liệu Supabase</div>
-                  <div style={{ fontSize:10, color:"#7ecfab" }}>
-                    {syncState==="syncing"
-                      ? `Đang tải${syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...`
-                      : `${activeRows.length.toLocaleString("vi-VN")} dòng · offline cache`}
+              <div style={{ ...s.fileItem(activeFileId==="__supabase__"), flexDirection:"column", alignItems:"stretch", gap:6 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                  <span style={{ fontSize:16 }}>☁️</span>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={s.fileName(true)}>Dữ liệu Supabase</div>
+                    <div style={{ fontSize:10, color: syncState==="syncing" ? "#f59e0b" : "#7ecfab" }}>
+                      {syncState==="syncing"
+                        ? `Đang tải${syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...`
+                        : `${activeRows.length.toLocaleString("vi-VN")} dòng · offline cache`}
+                    </div>
                   </div>
                 </div>
                 {syncState!=="syncing" && (
                   <button
                     onClick={e=>{e.stopPropagation();forceResync();}}
-                    title="Làm mới — tải lại toàn bộ từ Supabase"
-                    style={{ background:"none", border:"1px solid #3a6a9a", borderRadius:4, color:"#7ecfab", fontSize:10, padding:"2px 6px", cursor:"pointer", flexShrink:0 }}
-                  >↺</button>
+                    style={{ width:"100%", padding:"5px 0", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:5, color:"#7ecfab", fontSize:11, fontWeight:600, cursor:"pointer", letterSpacing:.3 }}
+                  >↺ Làm mới cache</button>
                 )}
               </div>
             )}
