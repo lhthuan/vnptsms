@@ -76,14 +76,26 @@ function cacheOpen() {
 }
 
 async function cacheWrite(rows) {
+  // Dedup theo (ma_hang, chi_nhanh, ma_kho) — cộng dồn cuoi_ky nếu trùng
+  const dedupMap = new Map();
+  for (const r of rows) {
+    const key = `${r.ma_hang}||${r.chi_nhanh}||${r.ma_kho}`;
+    if (dedupMap.has(key)) {
+      dedupMap.get(key).cuoi_ky += r.cuoi_ky;
+    } else {
+      dedupMap.set(key, { ...r });
+    }
+  }
+  const deduped = [...dedupMap.values()];
+
   const db = await cacheOpen();
-  const BATCH = 20000; // chia nhỏ tránh transaction timeout với 500k+ dòng
-  for (let i = 0; i < rows.length; i += BATCH) {
+  const BATCH = 20000;
+  for (let i = 0; i < deduped.length; i += BATCH) {
     await new Promise((res, rej) => {
       const tx = db.transaction(CACHE_ST, "readwrite");
       const st = tx.objectStore(CACHE_ST);
       if (i === 0) st.clear();
-      rows.slice(i, i + BATCH).forEach(r => st.add(r));
+      deduped.slice(i, i + BATCH).forEach(r => st.add(r));
       tx.oncomplete = res; tx.onerror = () => rej(tx.error);
     });
   }
@@ -590,6 +602,26 @@ export default function App() {
   const [syncState, setSyncState] = useState("idle"); // idle | syncing | done | error
   const [syncCount, setSyncCount] = useState(0);
 
+  const forceResync = useCallback(() => {
+    localStorage.removeItem(LS_CACHE_TS); // xoá timestamp → cacheIsStale() sẽ trả về true
+    _syncProgressCb = (n) => setSyncCount(n);
+    setSyncState("syncing"); setSyncCount(0); setActiveRows([]); setActiveFileId(null);
+    syncCacheIfNeeded()
+      .then(async () => {
+        _syncProgressCb = null;
+        const cached = await cacheReadAll();
+        if (cached.length) {
+          setActiveRows(cached.map(r => ({
+            maHang: r.ma_hang, tenHang: r.ten_hang, chiNhanh: r.chi_nhanh,
+            tinhThanh: r.tinh_thanh, maKho: r.ma_kho, dvt: r.dvt, cuoiKy: r.cuoi_ky,
+          })));
+          setActiveFileId("__supabase__");
+        }
+        setSyncState("done");
+      })
+      .catch(() => { _syncProgressCb = null; setSyncState("error"); });
+  }, []);
+
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
     // Sync cache nếu Supabase có data mới hơn, rồi auto-load vào activeRows
@@ -819,13 +851,24 @@ export default function App() {
           </div>
           <div style={s.sbBody}>
             {fileList.length===0 && activeRows.length===0 && <div style={{ padding:"24px 16px", textAlign:"center", color:"#7a9bbf", fontSize:11 }}>Chưa có file nào</div>}
-            {activeFileId==="__supabase__" && (
-              <div style={s.fileItem(true)}>
+            {(activeFileId==="__supabase__" || syncState==="syncing") && (
+              <div style={s.fileItem(activeFileId==="__supabase__")}>
                 <span style={{ fontSize:16 }}>☁️</span>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={s.fileName(true)}>Dữ liệu Supabase</div>
-                  <div style={{ fontSize:10, color:"#7ecfab" }}>{activeRows.length.toLocaleString("vi-VN")} dòng · offline cache</div>
+                  <div style={{ fontSize:10, color:"#7ecfab" }}>
+                    {syncState==="syncing"
+                      ? `Đang tải${syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...`
+                      : `${activeRows.length.toLocaleString("vi-VN")} dòng · offline cache`}
+                  </div>
                 </div>
+                {syncState!=="syncing" && (
+                  <button
+                    onClick={e=>{e.stopPropagation();forceResync();}}
+                    title="Làm mới — tải lại toàn bộ từ Supabase"
+                    style={{ background:"none", border:"1px solid #3a6a9a", borderRadius:4, color:"#7ecfab", fontSize:10, padding:"2px 6px", cursor:"pointer", flexShrink:0 }}
+                  >↺</button>
+                )}
               </div>
             )}
             {fileList.map(f=>(
