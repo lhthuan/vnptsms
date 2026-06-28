@@ -800,8 +800,8 @@ export default function App() {
     const base = window.location.href
       .replace(/\/inventory-lookup(\/.*)?$/, '/')
       .replace(/\/$/, '');
-    window.open(base + '/v2.html', '_blank');
-    setExportToast(`Đã gửi ${payload.length} SP → v2.html`);
+    window.open(base + '/index.html', '_blank');
+    setExportToast(`Đã gửi ${payload.length} SP → Lập báo giá`);
     setTimeout(() => setExportToast(""), 3000);
   };
 
