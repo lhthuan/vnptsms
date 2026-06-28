@@ -2370,7 +2370,7 @@ async function renderSavedModal() {
 
 function _applyOrderToForm(o) {
   cart = JSON.parse(JSON.stringify(o.cart||[]));
-  orderId = o.id; _isNewOrder = false;
+  orderId = o.id; _isNewOrder = false; _expandedStep = null;
   selectedNotice = o.selectedNotice ?? 0;
   selectedEmployee = o.created_by || '';
   document.getElementById('empSelect').value = selectedEmployee;
@@ -2587,6 +2587,13 @@ const ORDER_STATUS_FLOW = [
 let pharmacies = [];
 let shippingProviders = [];
 let _currentOrderStatus = { status:'quoted', erp_code:'', pharmacy_id:'', tracking_code:'', shipping_provider_id:'' };
+let _expandedStep = null;
+
+function toggleStepExpand(key, event) {
+  if (event && event.target.closest('button,input,select')) return;
+  _expandedStep = (_expandedStep === key) ? null : key;
+  renderTrackCurrentOrder();
+}
 
 async function loadPharmacies() {
   const sb = getSb();
@@ -2611,18 +2618,24 @@ function renderTrackCurrentOrder() {
     el.innerHTML = '<div style="color:var(--text-3);font-size:12px;text-align:center;padding:10px 0">Chưa tải đơn nào</div>';
     return;
   }
-  const idx = ORDER_STATUS_FLOW.findIndex(s => s.key === (_currentOrderStatus.status||'quoted'));
-  const statusObj = ORDER_STATUS_FLOW[idx] || ORDER_STATUS_FLOW[0];
+  const curIdx = ORDER_STATUS_FLOW.findIndex(s => s.key === (_currentOrderStatus.status||'quoted'));
+  const statusObj = ORDER_STATUS_FLOW[curIdx] || ORDER_STATUS_FLOW[0];
+  // Auto-expand current step on first render
+  if (_expandedStep === null) _expandedStep = statusObj.key;
+
   el.innerHTML = `
     <div style="font-family:var(--mono);font-size:12px;font-weight:700;color:var(--green);margin-bottom:2px">${orderId}</div>
     <div style="font-size:11.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:6px">${(recName||'Đơn chưa đặt tên').replace(/</g,'&lt;')}</div>
     <div style="margin-bottom:6px"><span class="sbadge ${statusObj.cls}">${statusObj.icon} ${statusObj.label}</span></div>
     <div class="status-steps">
       ${ORDER_STATUS_FLOW.map((s,i) => {
-        const isDone = i < idx, isCur = i === idx, isPend = i > idx;
+        const isDone = i < curIdx, isCur = i === curIdx, isPend = i > curIdx;
+        const isExp  = _expandedStep === s.key;
         const dotCls = isDone?'d-done':isCur?'d-current':'d-pending';
         const lblCls = isDone?'l-done':isCur?'l-current':'l-pending';
         const stepCls = isCur?'s-current':isDone?'s-done':'';
+
+        // Always-visible summary line for steps with stored data
         let sub = '';
         if (s.key==='pharmacy_sent' && (isDone||isCur)) {
           const ph = pharmacies.find(p=>p.id===_currentOrderStatus.pharmacy_id);
@@ -2630,44 +2643,98 @@ function renderTrackCurrentOrder() {
           else if (_currentOrderStatus.erp_code) sub = `<div class="step-sub">ERP: ${_currentOrderStatus.erp_code}</div>`;
         }
         if (s.key==='shipped' && (isDone||isCur) && _currentOrderStatus.tracking_code) {
-          const sp = shippingProviders.find(p=>p.id===_currentOrderStatus.shipping_provider_id);
-          sub = `<div class="step-sub">${sp?sp.name.replace(/</g,'&lt;')+' · ':''} ${_currentOrderStatus.tracking_code}</div>`;
+          const sp2 = shippingProviders.find(p=>p.id===_currentOrderStatus.shipping_provider_id);
+          sub = `<div class="step-sub">${sp2?sp2.name.replace(/</g,'&lt;')+' · ':''} ${_currentOrderStatus.tracking_code}</div>`;
         }
-        let form = '';
-        if (isCur) {
-          if (s.extra === 'pharmacy') {
-            form = `<div class="step-extra-form">
-              <input type="text" id="stepErpCode" value="${_currentOrderStatus.erp_code||''}" placeholder="Mã đơn ERP (tuỳ chọn)">
-              <div style="position:relative">
-                <input type="text" id="stepPharmacySearch" placeholder="Tìm nhà thuốc (tên hoặc mã)..." autocomplete="off"
-                  value="${_getPharmDisplay()}"
-                  oninput="filterPharmSearch(this.value)"
-                  onfocus="filterPharmSearch(this.value)"
-                  onblur="setTimeout(()=>{const d=document.getElementById('pharmSearchDrop');if(d)d.style.display='none'},200)"
-                  style="width:100%;padding-right:28px">
-                <input type="hidden" id="stepPharmacyId" value="${_currentOrderStatus.pharmacy_id||''}">
-                <div id="pharmSearchDrop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--green-mid);border-radius:0 0 6px 6px;z-index:200;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
-              </div>
-              <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('pharmacy_sent')">Xác nhận bước này</button>
-            </div>`;
-          } else if (s.extra === 'tracking') {
-            form = `<div class="step-extra-form">
-              <select id="stepShipper">
-                <option value="">— Nhà vận chuyển —</option>
-                ${shippingProviders.map(p=>`<option value="${p.id}" ${_currentOrderStatus.shipping_provider_id===p.id?'selected':''}>${p.name.replace(/</g,'&lt;')}</option>`).join('')}
-              </select>
-              <input type="text" id="stepTrackCode" value="${_currentOrderStatus.tracking_code||''}" placeholder="Mã vận đơn">
-              <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('shipped')">Xác nhận bước này</button>
-            </div>`;
+
+        // Detail panel — only shown when expanded
+        let detail = '';
+        if (isExp) {
+          if (isCur) {
+            // Current step: editable form + confirm button
+            if (s.extra === 'pharmacy') {
+              detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                <input type="text" id="stepErpCode" value="${_currentOrderStatus.erp_code||''}" placeholder="Mã đơn ERP (tuỳ chọn)">
+                <div style="position:relative">
+                  <input type="text" id="stepPharmacySearch" placeholder="Tìm nhà thuốc (tên hoặc mã)..." autocomplete="off"
+                    value="${_getPharmDisplay()}"
+                    oninput="filterPharmSearch(this.value)"
+                    onfocus="filterPharmSearch(this.value)"
+                    onblur="setTimeout(()=>{const d=document.getElementById('pharmSearchDrop');if(d)d.style.display='none'},200)"
+                    style="width:100%">
+                  <input type="hidden" id="stepPharmacyId" value="${_currentOrderStatus.pharmacy_id||''}">
+                  <div id="pharmSearchDrop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--green-mid);border-radius:0 0 6px 6px;z-index:200;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
+                </div>
+                <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('pharmacy_sent')">Xác nhận bước này</button>
+              </div>`;
+            } else if (s.extra === 'tracking') {
+              detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                <select id="stepShipper">
+                  <option value="">— Nhà vận chuyển —</option>
+                  ${shippingProviders.map(p=>`<option value="${p.id}" ${_currentOrderStatus.shipping_provider_id===p.id?'selected':''}>${p.name.replace(/</g,'&lt;')}</option>`).join('')}
+                </select>
+                <input type="text" id="stepTrackCode" value="${_currentOrderStatus.tracking_code||''}" placeholder="Mã vận đơn">
+                <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('shipped')">Xác nhận bước này</button>
+              </div>`;
+            } else {
+              detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('${s.key}')">Xác nhận bước này</button>
+              </div>`;
+            }
+          } else if (isDone) {
+            // Done step: read-only info panel
+            if (s.key === 'pharmacy_sent') {
+              const ph2 = pharmacies.find(p=>p.id===_currentOrderStatus.pharmacy_id);
+              detail = `<div class="step-extra-form" style="background:var(--surface-2);border-radius:6px;padding:8px;gap:3px" onclick="event.stopPropagation()">
+                <div style="font-size:11px;color:var(--text-3)">Nhà thuốc: <strong style="color:var(--text)">${ph2?.name?.replace(/</g,'&lt;')||'—'}</strong></div>
+                <div style="font-size:11px;color:var(--text-3)">Mã ERP: <strong style="color:var(--text);font-family:var(--mono)">${_currentOrderStatus.erp_code||'—'}</strong></div>
+              </div>`;
+            } else if (s.key === 'shipped') {
+              const sp3 = shippingProviders.find(p=>p.id===_currentOrderStatus.shipping_provider_id);
+              detail = `<div class="step-extra-form" style="background:var(--surface-2);border-radius:6px;padding:8px;gap:3px" onclick="event.stopPropagation()">
+                <div style="font-size:11px;color:var(--text-3)">Nhà vận chuyển: <strong style="color:var(--text)">${sp3?.name?.replace(/</g,'&lt;')||'—'}</strong></div>
+                <div style="font-size:11px;color:var(--text-3)">Mã vận đơn: <strong style="color:var(--text);font-family:var(--mono)">${_currentOrderStatus.tracking_code||'—'}</strong></div>
+              </div>`;
+            }
           } else {
-            form = `<div class="step-extra-form"><button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('${s.key}')">Xác nhận bước này</button></div>`;
+            // Pending step: form to advance to this step
+            if (s.extra === 'pharmacy') {
+              detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                <input type="text" id="stepErpCode" placeholder="Mã đơn ERP (tuỳ chọn)">
+                <div style="position:relative">
+                  <input type="text" id="stepPharmacySearch" placeholder="Tìm nhà thuốc (tên hoặc mã)..." autocomplete="off"
+                    oninput="filterPharmSearch(this.value)"
+                    onfocus="filterPharmSearch(this.value)"
+                    onblur="setTimeout(()=>{const d=document.getElementById('pharmSearchDrop');if(d)d.style.display='none'},200)"
+                    style="width:100%">
+                  <input type="hidden" id="stepPharmacyId" value="">
+                  <div id="pharmSearchDrop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--green-mid);border-radius:0 0 6px 6px;z-index:200;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.12)"></div>
+                </div>
+                <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('pharmacy_sent')">Xác nhận bước này</button>
+              </div>`;
+            } else if (s.extra === 'tracking') {
+              detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                <select id="stepShipper">
+                  <option value="">— Nhà vận chuyển —</option>
+                  ${shippingProviders.map(p=>`<option value="${p.id}">${p.name.replace(/</g,'&lt;')}</option>`).join('')}
+                </select>
+                <input type="text" id="stepTrackCode" placeholder="Mã vận đơn">
+                <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('shipped')">Xác nhận bước này</button>
+              </div>`;
+            } else {
+              detail = `<div class="step-extra-form" onclick="event.stopPropagation()">
+                <button class="btn btn-green btn-sm" style="justify-content:center" onclick="advanceStatus('${s.key}')">Xác nhận bước này</button>
+              </div>`;
+            }
           }
         }
-        return `<div class="status-step ${stepCls}" onclick="if(${isPend||isDone?1:0})jumpStatus('${s.key}')">
+
+        const chevron = `<span style="font-size:9px;color:var(--text-3);margin-left:auto;flex-shrink:0;opacity:.6">${isExp?'▴':'▾'}</span>`;
+        return `<div class="status-step ${stepCls}" onclick="toggleStepExpand('${s.key}',event)" style="cursor:pointer">
           <div class="step-dot ${dotCls}">${isDone?'✓':i+1}</div>
           <div style="flex:1;min-width:0">
-            <div class="step-label ${lblCls}">${s.icon} ${s.label}</div>
-            ${sub}${form}
+            <div class="step-label ${lblCls}" style="display:flex;align-items:center">${s.icon} ${s.label}${chevron}</div>
+            ${sub}${detail}
           </div>
         </div>`;
       }).join('')}
@@ -2721,6 +2788,7 @@ async function advanceStatus(key) {
     extra.tracking_code = document.getElementById('stepTrackCode')?.value.trim()||'';
   }
   _currentOrderStatus = {..._currentOrderStatus, status:key, ...extra};
+  _expandedStep = null;
   await _persistOrderStatus();
   renderTrackCurrentOrder();
   await loadTrackOrders();
