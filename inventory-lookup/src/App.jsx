@@ -3,7 +3,7 @@ import * as XLSX from "xlsx";
 import { createClient } from "@supabase/supabase-js";
 
 // ─── BUILD INFO ──────────────────────────────────────────────────────────────
-const BUILD_DATE = new Date().toLocaleDateString("vi-VN", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit" });
+const BUILD_DATE = new Date(__BUILD_TIME__).toLocaleString("vi-VN", { day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit", timeZone:"Asia/Ho_Chi_Minh" });
 const VERSION = "1.3.0";
 
 // ─── COLORS (Light ERP Theme) ─────────────────────────────────────────────────
@@ -957,12 +957,12 @@ export default function App() {
               {syncState==="done"    && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#7ecfab", display:"inline-block" }}/> Đã tải {activeRows.length.toLocaleString("vi-VN")} dòng</>}
               {syncState==="error"   && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f87171", display:"inline-block" }}/> Lỗi sync</>}
               {syncState==="idle" && activeRows.length>0 && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#7ecfab", display:"inline-block" }}/> {activeRows.length.toLocaleString("vi-VN")} dòng offline</>}
-              {syncState!=="syncing" && (
-                <button onClick={forceResync} title="Tải lại toàn bộ từ Supabase"
-                  style={{ padding:"3px 8px", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:4, color:"#7ecfab", fontSize:10, fontWeight:700, cursor:"pointer" }}>
-                  ↺ Làm mới
-                </button>
-              )}
+              <button
+                onClick={forceResync}
+                disabled={syncState==="syncing"}
+                title="Tải lại toàn bộ từ Supabase"
+                style={{ padding:"3px 8px", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:4, color: syncState==="syncing" ? "#3a6a9a" : "#7ecfab", fontSize:10, fontWeight:700, cursor: syncState==="syncing" ? "default" : "pointer" }}
+              >&#x21BA; Làm mới</button>
             </div>
           </div>
 
