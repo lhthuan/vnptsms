@@ -152,33 +152,44 @@ function _mapRow(r) {
   };
 }
 
+async function _fetchPage(sb, page, PAGE, retries = 3) {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    const { data, error } = await sb
+      .from(SB_TABLE).select("*").range(page * PAGE, (page + 1) * PAGE - 1);
+    if (!error && data) return data.map(_mapRow);
+    if (attempt < retries - 1) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
+  }
+  return null;
+}
+
 async function _fetchAllFromSb() {
   const sb = getSb();
   if (!sb) return [];
 
-  // Lấy tổng số dòng trước để chia pages song song
   const { count, error: cntErr } = await sb
     .from(SB_TABLE).select("*", { count: "exact", head: true });
   if (cntErr || !count) return [];
 
-  const PAGE = 2000;        // 2k dòng/request
-  const CONCURRENCY = 5;    // 5 request song song
+  const PAGE = 2000;
+  const CONCURRENCY = 3;   // giảm từ 5 → 3 tránh rate-limit Supabase
   const totalPages = Math.ceil(count / PAGE);
-  const pages = Array.from({ length: totalPages }, (_, i) => i);
   let all = new Array(totalPages);
 
-  for (let b = 0; b < pages.length; b += CONCURRENCY) {
-    const batch = pages.slice(b, b + CONCURRENCY);
-    const results = await Promise.all(
-      batch.map(p => sb.from(SB_TABLE).select("*").range(p * PAGE, (p + 1) * PAGE - 1))
-    );
-    results.forEach(({ data, error }, i) => {
-      if (!error && data) all[batch[i]] = data.map(_mapRow);
-    });
+  for (let b = 0; b < totalPages; b += CONCURRENCY) {
+    const batch = [];
+    for (let i = b; i < Math.min(b + CONCURRENCY, totalPages); i++) batch.push(i);
+    const results = await Promise.all(batch.map(p => _fetchPage(sb, p, PAGE)));
+    results.forEach((rows, i) => { if (rows) all[batch[i]] = rows; });
     if (_syncProgressCb) {
       const fetched = all.filter(Boolean).reduce((s, a) => s + a.length, 0);
       _syncProgressCb(fetched);
     }
+  }
+
+  const missing = all.map((v,i)=>v==null?i:null).filter(i=>i!=null);
+  if (missing.length) {
+    const retried = await Promise.all(missing.map(p => _fetchPage(sb, p, PAGE, 5)));
+    retried.forEach((rows, i) => { if (rows) all[missing[i]] = rows; });
   }
 
   return all.filter(Boolean).flat();
@@ -607,7 +618,7 @@ export default function App() {
   const [dataTs, setDataTs]       = useState(() => localStorage.getItem(LS_SB_UPDATED));
   const [provinces, setProvinces] = useState([]);
   const [branches,  setBranches]  = useState([]);
-  const autoSearchRef = useRef(null); // items từ v2.html, chờ activeRows load xong
+  const [pendingSearch, setPendingSearch] = useState(null); // items từ v2.html chờ search
 
   const _applyRows = useCallback((rows) => {
     setActiveRows(rows);
@@ -637,28 +648,42 @@ export default function App() {
       .catch(() => { _syncProgressCb = null; setSyncState("error"); });
   }, [_loadFromCache]);
 
+  const _applyRequest = useCallback((raw) => {
+    if (!Array.isArray(raw) || !raw.length) return;
+    const mapped = raw.map(it => ({
+      maHang:  String(it.maHang||"").toUpperCase().trim(),
+      tenHang: String(it.tenHang||"").trim(),
+      dvt:     String(it.dvt||"").trim(),
+      needQty: it.needQty != null ? String(it.needQty) : "",
+    })).filter(it => it.maHang);
+    if (!mapped.length) return;
+    setLookupItems(mapped);
+    setCoverItems(mapped);
+    setTab("lookup");
+    setPendingSearch(mapped); // trigger auto-search kể cả khi activeRows đã có
+  }, []);
+
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
-    // Đọc request từ v2.html sớm — dữ liệu sẽ auto-search khi activeRows load xong
+    // Đọc request từ v2.html (lần mở đầu)
     try {
       const req = localStorage.getItem("tsp_inv_lookup_request");
       if (req) {
-        const raw = JSON.parse(req);
         localStorage.removeItem("tsp_inv_lookup_request");
-        if (Array.isArray(raw) && raw.length) {
-          const mapped = raw.map(it => ({
-            maHang:  String(it.maHang||"").toUpperCase().trim(),
-            tenHang: String(it.tenHang||"").trim(),
-            dvt:     String(it.dvt||"").trim(),
-            needQty: it.needQty != null ? String(it.needQty) : "",
-          }));
-          autoSearchRef.current = mapped;
-          setLookupItems(mapped);
-          setCoverItems(mapped);
-          setTab("lookup");
-        }
+        _applyRequest(JSON.parse(req));
       }
     } catch {}
+
+    // Lắng nghe request từ tab v2.html đang mở (không cần mở tab mới)
+    const onStorage = (e) => {
+      if (e.key !== "tsp_inv_lookup_request" || !e.newValue) return;
+      try {
+        localStorage.removeItem("tsp_inv_lookup_request");
+        _applyRequest(JSON.parse(e.newValue));
+      } catch {}
+    };
+    window.addEventListener("storage", onStorage);
+
     // Load IndexedDB ngay lập tức (không chờ Supabase check) → UI hiện nhanh
     _loadFromCache().then(() => {
       // Sau khi UI có dữ liệu, check Supabase staleness ở nền
@@ -667,30 +692,28 @@ export default function App() {
       syncCacheIfNeeded()
         .then(async (synced) => {
           _syncProgressCb = null;
+          setDataTs(localStorage.getItem(LS_SB_UPDATED)); // cập nhật ngày data dù có sync hay không
           if (synced) { await _loadFromCache(); setSyncState("done"); }
           else setSyncState("idle");
         })
         .catch(() => { _syncProgressCb = null; setSyncState("error"); });
     });
-  }, [_loadFromCache]);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [_loadFromCache, _applyRequest]);
 
-  // Auto-search cả 2 tab sau khi activeRows load xong (từ cross-app request)
-  useEffect(() => {
-    if (!autoSearchRef.current || !activeRows.length) return;
-    const items = autoSearchRef.current;
-    autoSearchRef.current = null;
-    // Tra cứu mã hàng
+  const _runAutoSearch = useCallback((items, rows) => {
+    // Tab 1: Tra cứu mã hàng
     const map = {};
     items.forEach(it => {
-      map[it.maHang] = { rows: activeRows.filter(r=>r.maHang.toUpperCase()===it.maHang), needQty:it.needQty, tenHang:it.tenHang, dvt:it.dvt };
+      map[it.maHang] = { rows: rows.filter(r=>r.maHang.toUpperCase()===it.maHang), needQty:it.needQty, tenHang:it.tenHang, dvt:it.dvt };
     });
     setResults({ items, map });
-    // Kiểm tra chi nhánh
+    // Tab 2: Kiểm tra chi nhánh
     const thresholds = {};
     items.forEach(it => { thresholds[it.maHang] = it.needQty===''?0:Number(it.needQty); });
     const codes = items.map(it=>it.maHang);
     const branchMap = {};
-    activeRows.forEach(r => {
+    rows.forEach(r => {
       const key = r.chiNhanh+"||"+r.tinhThanh;
       if (!branchMap[key]) branchMap[key]={ chiNhanh:r.chiNhanh, tinhThanh:r.tinhThanh, qtyMap:{} };
       const code = r.maHang.toUpperCase();
@@ -702,7 +725,14 @@ export default function App() {
       return { ...b, codeStatus, count, hasAll:count===codes.length };
     }).sort((a,b)=>b.count-a.count||a.chiNhanh.localeCompare(b.chiNhanh));
     setCoverageResults({ codes, rows:covRows, items });
-  }, [activeRows]);
+  }, []);
+
+  // Auto-search khi activeRows vừa load xong (tab mới mở)
+  useEffect(() => {
+    if (!pendingSearch || !activeRows.length) return;
+    setPendingSearch(null);
+    _runAutoSearch(pendingSearch, activeRows);
+  }, [activeRows, pendingSearch, _runAutoSearch]);
 
   const filteredRows = useMemo(() => activeRows.filter(r=>
     (!filterProvince||r.tinhThanh===filterProvince)&&(!filterBranch||r.chiNhanh===filterBranch)
@@ -930,7 +960,7 @@ export default function App() {
                         </div>
                       </>}
                     </div>
-                  : <><span style={{color:"#c8e8ff", fontWeight:600}}>Thêm file Excel</span><br/><span style={{color:"#7a9bbf"}}>kéo thả hoặc click</span></>
+                  : <><span style={{color:"#c8e8ff", fontWeight:600}}>Cập nhật data</span><br/><span style={{color:"#7a9bbf"}}>Tải tồn kho mới trừ tích xuất ERP</span></>
                 }
               </div>
               <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display:"none" }} onChange={e=>handleUpload(e.target.files[0])}/>
@@ -948,9 +978,9 @@ export default function App() {
               <span style={{ fontSize:11, color:"#7a9bbf" }}>{activeRows.length.toLocaleString()} dòng</span>
             </>}
             <div style={{ marginLeft:"auto", fontSize:11, color:"#7a9bbf", display:"flex", alignItems:"center", gap:8 }}>
-              {dataTs && syncState!=="syncing" && (
-                <span style={{ fontSize:10, color:"#5a8aaa" }} title="Thời điểm dữ liệu tồn kho được cập nhật">
-                  📅 {new Date(dataTs).toLocaleString("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+              {dataTs && (
+                <span style={{ fontSize:10, color:"#5a8aaa" }} title="Ngày dữ liệu tồn kho trên Supabase">
+                  📅 Data: {new Date(dataTs).toLocaleString("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Asia/Ho_Chi_Minh"})}
                 </span>
               )}
               {syncState==="syncing" && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f59e0b", display:"inline-block", animation:"pulse 1s infinite" }}/> Đang tải{syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...</>}

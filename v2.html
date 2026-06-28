@@ -2257,27 +2257,28 @@ async function showSKUResult(d) {
   </div>`;
 }
 
-function openInvLookupTab() {
+function _openInvTab(payload) {
   const base = window.location.href.replace(/\/[^/]*$/, '/');
-  window.open(base + 'inventory-lookup/', '_blank');
+  const url = base + 'inventory-lookup/';
+  if (payload) localStorage.setItem('tsp_inv_lookup_request', JSON.stringify(payload));
+  // Dùng named window 'inv_lookup' → reuse tab nếu đã mở, không mở tab mới
+  window.open(url, 'inv_lookup');
+}
+
+function openInvLookupTab() {
+  _openInvTab(null);
 }
 
 function openInvLookupWithSku(sku, tenHang, dvt) {
   if (!sku) return;
-  const payload = [{ maHang: sku, tenHang: tenHang || sku, dvt: dvt || '', needQty: 1 }];
-  localStorage.setItem('tsp_inv_lookup_request', JSON.stringify(payload));
-  const base = window.location.href.replace(/\/[^/]*$/, '/');
-  window.open(base + 'inventory-lookup/', '_blank');
+  _openInvTab([{ maHang: sku, tenHang: tenHang || sku, dvt: dvt || '', needQty: 1 }]);
 }
 
 function openInvLookupWithCart() {
   const skus = cart.filter(p => p.sku && !p.promo);
   if (!skus.length) { toast('Không có SKU nào trong đơn để tra cứu', 'error'); return; }
-  const payload = skus.map(p => ({ maHang: p.sku, tenHang: p.name, dvt: p.unit, needQty: p.qty }));
-  localStorage.setItem('tsp_inv_lookup_request', JSON.stringify(payload));
-  const base = window.location.href.replace(/\/[^/]*$/, '/');
-  window.open(base + 'inventory-lookup/', '_blank');
-  toast(`Đã gửi ${payload.length} SKU → Tra cứu tồn kho`, 'success');
+  _openInvTab(skus.map(p => ({ maHang: p.sku, tenHang: p.name, dvt: p.unit, needQty: p.qty })));
+  toast(`Đã gửi ${skus.length} SKU → Tra cứu tồn kho`, 'success');
 }
 
 function parseJSON() {
