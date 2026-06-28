@@ -56,8 +56,9 @@ function getSb() {
 }
 
 // ─── OFFLINE INDEX (IndexedDB cache of Supabase data) ────────────────────────
-const CACHE_DB = "InvCacheDB", CACHE_VER = 1, CACHE_ST = "stock";
-const LS_SB_UPDATED = "inv_sb_updated_at"; // set when Supabase data changes
+// v2: bỏ ma_hang index (không cần vì dùng getAll), tăng tốc ghi 510k dòng
+const CACHE_DB = "InvCacheDB", CACHE_VER = 2, CACHE_ST = "stock";
+const LS_SB_UPDATED = "inv_sb_updated_at"; // timestamp data trên Supabase
 const LS_CACHE_TS   = "inv_cache_ts";       // set when IndexedDB is synced
 
 function cacheOpen() {
@@ -65,10 +66,11 @@ function cacheOpen() {
     const r = indexedDB.open(CACHE_DB, CACHE_VER);
     r.onupgradeneeded = e => {
       const db = e.target.result;
-      if (!db.objectStoreNames.contains(CACHE_ST)) {
-        const st = db.createObjectStore(CACHE_ST, { autoIncrement: true });
-        st.createIndex("ma_hang", "ma_hang", { unique: false });
-      }
+      // Xoá store cũ (v1 có index không cần thiết), tạo lại không có index
+      if (db.objectStoreNames.contains(CACHE_ST)) db.deleteObjectStore(CACHE_ST);
+      db.createObjectStore(CACHE_ST, { autoIncrement: true });
+      // Buộc re-sync vì store bị xoá
+      try { localStorage.removeItem(LS_CACHE_TS); } catch {}
     };
     r.onsuccess = () => res(r.result);
     r.onerror   = () => rej(r.error);
@@ -124,7 +126,8 @@ async function cacheIsStale() {
       .order("updated_at", { ascending: false })
       .limit(1);
     const sbTs = data?.[0]?.updated_at;
-    if (!sbTs) return false; // Supabase chưa có data
+    if (!sbTs) return false;
+    try { localStorage.setItem(LS_SB_UPDATED, sbTs); } catch {} // lưu để hiển thị ngày data
     return new Date(sbTs) > new Date(cacheTs);
   } catch { return false; } // lỗi mạng → dùng cache
 }
@@ -599,76 +602,103 @@ export default function App() {
   const [exportToast, setExportToast] = useState("");
   const [coverageResults, setCoverageResults] = useState(null);
 
-  const [syncState, setSyncState] = useState("idle"); // idle | syncing | done | error
+  const [syncState, setSyncState] = useState("idle");
   const [syncCount, setSyncCount] = useState(0);
+  const [dataTs, setDataTs]       = useState(() => localStorage.getItem(LS_SB_UPDATED));
+  const [provinces, setProvinces] = useState([]);
+  const [branches,  setBranches]  = useState([]);
+  const autoSearchRef = useRef(null); // items từ v2.html, chờ activeRows load xong
+
+  const _applyRows = useCallback((rows) => {
+    setActiveRows(rows);
+    setProvinces([...new Set(rows.map(r=>r.tinhThanh).filter(Boolean))].sort());
+    setBranches([...new Set(rows.map(r=>r.chiNhanh).filter(Boolean))].sort((a,b)=>
+      isNaN(a)||isNaN(b)?a.localeCompare(b):Number(a)-Number(b)));
+  }, []);
+
+  const _loadFromCache = useCallback(async () => {
+    const cached = await cacheReadAll();
+    if (cached.length) {
+      _applyRows(cached.map(r => ({
+        maHang: r.ma_hang, tenHang: r.ten_hang, chiNhanh: r.chi_nhanh,
+        tinhThanh: r.tinh_thanh, maKho: r.ma_kho, dvt: r.dvt, cuoiKy: r.cuoi_ky,
+      })));
+      setActiveFileId("__supabase__");
+      setDataTs(localStorage.getItem(LS_SB_UPDATED));
+    }
+  }, [_applyRows]);
 
   const forceResync = useCallback(() => {
-    localStorage.removeItem(LS_CACHE_TS); // xoá timestamp → cacheIsStale() sẽ trả về true
+    localStorage.removeItem(LS_CACHE_TS);
     _syncProgressCb = (n) => setSyncCount(n);
     setSyncState("syncing"); setSyncCount(0); setActiveRows([]); setActiveFileId(null);
     syncCacheIfNeeded()
-      .then(async () => {
-        _syncProgressCb = null;
-        const cached = await cacheReadAll();
-        if (cached.length) {
-          setActiveRows(cached.map(r => ({
-            maHang: r.ma_hang, tenHang: r.ten_hang, chiNhanh: r.chi_nhanh,
-            tinhThanh: r.tinh_thanh, maKho: r.ma_kho, dvt: r.dvt, cuoiKy: r.cuoi_ky,
-          })));
-          setActiveFileId("__supabase__");
-        }
-        setSyncState("done");
-      })
+      .then(async () => { _syncProgressCb = null; await _loadFromCache(); setSyncState("done"); })
       .catch(() => { _syncProgressCb = null; setSyncState("error"); });
-  }, []);
+  }, [_loadFromCache]);
 
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
-    // Sync cache nếu Supabase có data mới hơn, rồi auto-load vào activeRows
+    // Đọc request từ v2.html sớm — dữ liệu sẽ auto-search khi activeRows load xong
+    try {
+      const req = localStorage.getItem("tsp_inv_lookup_request");
+      if (req) {
+        const raw = JSON.parse(req);
+        localStorage.removeItem("tsp_inv_lookup_request");
+        if (Array.isArray(raw) && raw.length) {
+          const mapped = raw.map(it => ({
+            maHang:  String(it.maHang||"").toUpperCase().trim(),
+            tenHang: String(it.tenHang||"").trim(),
+            dvt:     String(it.dvt||"").trim(),
+            needQty: it.needQty != null ? String(it.needQty) : "",
+          }));
+          autoSearchRef.current = mapped;
+          setLookupItems(mapped);
+          setCoverItems(mapped);
+          setTab("lookup");
+        }
+      }
+    } catch {}
     _syncProgressCb = (n) => setSyncCount(n);
-    setSyncState("syncing");
-    setSyncCount(0);
+    setSyncState("syncing"); setSyncCount(0);
     syncCacheIfNeeded()
       .then(async (synced) => {
         _syncProgressCb = null;
         setSyncState(synced ? "done" : "idle");
-        // Luôn đọc từ IndexedDB sau sync — kể cả khi cache đã fresh
-        const cached = await cacheReadAll();
-        if (cached.length) {
-          setActiveRows(cached.map(r => ({
-            maHang:    r.ma_hang,
-            tenHang:   r.ten_hang,
-            chiNhanh:  r.chi_nhanh,
-            tinhThanh: r.tinh_thanh,
-            maKho:     r.ma_kho,
-            dvt:       r.dvt,
-            cuoiKy:    r.cuoi_ky,
-          })));
-          setActiveFileId("__supabase__");
-        }
-        // Đọc request từ v2.html (Tra tồn kho từ đơn báo giá)
-        try {
-          const req = localStorage.getItem("tsp_inv_lookup_request");
-          if (req) {
-            const items = JSON.parse(req);
-            localStorage.removeItem("tsp_inv_lookup_request");
-            if (Array.isArray(items) && items.length) {
-              setLookupItems(items.map(it => ({
-                maHang:  String(it.maHang||"").toUpperCase().trim(),
-                tenHang: String(it.tenHang||"").trim(),
-                dvt:     String(it.dvt||"").trim(),
-                needQty: it.needQty != null ? String(it.needQty) : "",
-              })));
-              setTab("lookup");
-            }
-          }
-        } catch {}
+        await _loadFromCache();
       })
       .catch(() => { _syncProgressCb = null; setSyncState("error"); });
-  }, []);
+  }, [_loadFromCache]);
 
-  const provinces = useMemo(() => [...new Set(activeRows.map(r=>r.tinhThanh).filter(Boolean))].sort(), [activeRows]);
-  const branches  = useMemo(() => [...new Set(activeRows.map(r=>r.chiNhanh).filter(Boolean))].sort((a,b)=>isNaN(a)||isNaN(b)?a.localeCompare(b):Number(a)-Number(b)), [activeRows]);
+  // Auto-search cả 2 tab sau khi activeRows load xong (từ cross-app request)
+  useEffect(() => {
+    if (!autoSearchRef.current || !activeRows.length) return;
+    const items = autoSearchRef.current;
+    autoSearchRef.current = null;
+    // Tra cứu mã hàng
+    const map = {};
+    items.forEach(it => {
+      map[it.maHang] = { rows: activeRows.filter(r=>r.maHang.toUpperCase()===it.maHang), needQty:it.needQty, tenHang:it.tenHang, dvt:it.dvt };
+    });
+    setResults({ items, map });
+    // Kiểm tra chi nhánh
+    const thresholds = {};
+    items.forEach(it => { thresholds[it.maHang] = it.needQty===''?0:Number(it.needQty); });
+    const codes = items.map(it=>it.maHang);
+    const branchMap = {};
+    activeRows.forEach(r => {
+      const key = r.chiNhanh+"||"+r.tinhThanh;
+      if (!branchMap[key]) branchMap[key]={ chiNhanh:r.chiNhanh, tinhThanh:r.tinhThanh, qtyMap:{} };
+      const code = r.maHang.toUpperCase();
+      if (codes.includes(code)) branchMap[key].qtyMap[code]=(branchMap[key].qtyMap[code]||0)+parseQty(r.cuoiKy);
+    });
+    const covRows = Object.values(branchMap).map(b => {
+      const codeStatus = codes.map(c=>({ code:c, qty:b.qtyMap[c]||0, needed:thresholds[c]||0, ok:(b.qtyMap[c]||0)>=(thresholds[c]||0), info:items.find(it=>it.maHang===c) }));
+      const count = codeStatus.filter(cs=>cs.ok).length;
+      return { ...b, codeStatus, count, hasAll:count===codes.length };
+    }).sort((a,b)=>b.count-a.count||a.chiNhanh.localeCompare(b.chiNhanh));
+    setCoverageResults({ codes, rows:covRows, items });
+  }, [activeRows]);
 
   const filteredRows = useMemo(() => activeRows.filter(r=>
     (!filterProvince||r.tinhThanh===filterProvince)&&(!filterBranch||r.chiNhanh===filterBranch)
@@ -848,15 +878,6 @@ export default function App() {
             <div style={s.sbTitle}><div style={s.dot}/>Kho dữ liệu</div>
             <div style={{ fontSize:10, color:"#7a9bbf", marginTop:4 }}>{fileList.length} lần import · Lưu trên Supabase</div>
             <div style={{ fontSize:10, color:"#5a8aaa", marginTop:2 }}>Upload mới → ghi đè toàn bộ</div>
-            {syncState==="syncing"
-              ? <div style={{ marginTop:8, fontSize:11, color:"#f59e0b", fontWeight:600 }}>
-                  ⏳ Đang tải{syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...
-                </div>
-              : <button
-                  onClick={forceResync}
-                  style={{ marginTop:8, width:"100%", padding:"6px 0", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:5, color:"#7ecfab", fontSize:11, fontWeight:700, cursor:"pointer" }}
-                >↺ Làm mới cache Supabase</button>
-            }
           </div>
           <div style={s.sbBody}>
             {fileList.length===0 && activeRows.length===0 && <div style={{ padding:"24px 16px", textAlign:"center", color:"#7a9bbf", fontSize:11 }}>Chưa có file nào</div>}
@@ -922,11 +943,22 @@ export default function App() {
               <span style={{ fontSize:12, color:"#c8e8ff", fontWeight:600 }}>{activeFile.name}</span>
               <span style={{ fontSize:11, color:"#7a9bbf" }}>{activeRows.length.toLocaleString()} dòng</span>
             </>}
-            <div style={{ marginLeft:"auto", fontSize:11, color:"#7a9bbf", display:"flex", alignItems:"center", gap:6 }}>
+            <div style={{ marginLeft:"auto", fontSize:11, color:"#7a9bbf", display:"flex", alignItems:"center", gap:8 }}>
+              {dataTs && syncState!=="syncing" && (
+                <span style={{ fontSize:10, color:"#5a8aaa" }} title="Thời điểm dữ liệu tồn kho được cập nhật">
+                  📅 {new Date(dataTs).toLocaleString("vi-VN",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"})}
+                </span>
+              )}
               {syncState==="syncing" && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f59e0b", display:"inline-block", animation:"pulse 1s infinite" }}/> Đang tải{syncCount>0?` ${syncCount.toLocaleString("vi-VN")} dòng`:""}...</>}
               {syncState==="done"    && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#7ecfab", display:"inline-block" }}/> Đã tải {activeRows.length.toLocaleString("vi-VN")} dòng</>}
               {syncState==="error"   && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#f87171", display:"inline-block" }}/> Lỗi sync</>}
               {syncState==="idle" && activeRows.length>0 && <><span style={{ width:8, height:8, borderRadius:"50%", background:"#7ecfab", display:"inline-block" }}/> {activeRows.length.toLocaleString("vi-VN")} dòng offline</>}
+              {syncState!=="syncing" && (
+                <button onClick={forceResync} title="Tải lại toàn bộ từ Supabase"
+                  style={{ padding:"3px 8px", background:"#16304f", border:"1px solid #3a6a9a", borderRadius:4, color:"#7ecfab", fontSize:10, fontWeight:700, cursor:"pointer" }}>
+                  ↺ Làm mới
+                </button>
+              )}
             </div>
           </div>
 
