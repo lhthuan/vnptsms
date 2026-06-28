@@ -2278,8 +2278,10 @@ function openInvLookupWithSku(sku, tenHang, dvt) {
 function openInvLookupWithCart() {
   const skus = cart.filter(p => p.sku && !p.promo);
   if (!skus.length) { toast('Không có SKU nào trong đơn để tra cứu', 'error'); return; }
-  _openInvTab(skus.map(p => ({ maHang: p.sku, tenHang: p.name, dvt: p.unit, needQty: p.qty })));
-  toast(`Đã gửi ${skus.length} SKU → Tra cứu tồn kho`, 'success');
+  if (!_orderSavedAt) { toast('Hãy lưu đơn trước khi tra tồn kho', 'error'); return; }
+  const base = window.location.href.replace(/\/[^/]*$/, '/');
+  window.open(base + 'inventory-lookup/?order=' + encodeURIComponent(orderId));
+  toast(`Mở tra tồn kho cho ${orderId} (${skus.length} SKU)`, 'success');
 }
 
 function parseJSON() {

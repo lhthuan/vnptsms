@@ -694,21 +694,21 @@ export default function App() {
   useEffect(() => {
     dbListMeta().then(l => setFileList(l.sort((a,b)=>b.uploadedAt-a.uploadedAt))).catch(console.error);
 
-    // Đọc SKU từ localStorage: cơ chế duy nhất, đơn giản, đáng tin
-    const readRequest = () => {
-      try {
-        const raw = localStorage.getItem("tsp_inv_lookup_request");
-        if (!raw) return;
-        localStorage.removeItem("tsp_inv_lookup_request");
-        _applyRequest(JSON.parse(raw));
-      } catch {}
-    };
-
-    readRequest(); // đọc ngay khi tab mới mở
-
-    // Đọc lại khi tab được active (window.open từ v2.html focus tab này)
-    const onVisible = () => { if (document.visibilityState === "visible") readRequest(); };
-    document.addEventListener("visibilitychange", onVisible);
+    // Đọc mã đơn từ URL: ?order=ECMxxxxxx → query Supabase lấy cart → _applyRequest
+    const orderParam = new URLSearchParams(window.location.search).get('order');
+    if (orderParam) {
+      const sb = getSb();
+      if (sb) {
+        sb.from('orders').select('cart').eq('id', orderParam).single()
+          .then(({ data, error }) => {
+            if (error || !Array.isArray(data?.cart)) return;
+            const items = data.cart
+              .filter(p => p.sku && !p.promo)
+              .map(p => ({ maHang: p.sku, tenHang: p.name || p.sku, dvt: p.unit || '', needQty: p.qty || 1 }));
+            if (items.length) _applyRequest(items);
+          });
+      }
+    }
 
     // Load IndexedDB ngay lập tức (không chờ Supabase check) → UI hiện nhanh
     _loadFromCache().then(() => {
@@ -724,9 +724,7 @@ export default function App() {
         })
         .catch(() => { _syncProgressCb = null; _savingCb = null; setSyncState("error"); });
     });
-    return () => {
-      document.removeEventListener("visibilitychange", onVisible);
-    };
+    return () => {};
   }, [_loadFromCache, _applyRequest]);
 
   // Auto-search khi activeRows vừa load xong (tab mới mở)
